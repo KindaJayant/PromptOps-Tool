@@ -9,6 +9,14 @@ export const api = {
     body: JSON.stringify(data)
   }).then(r => r.json()),
   getPrompt: (id) => fetch(`${API_BASE_URL}/prompts/${id}`).then(r => r.json()),
+  updatePrompt: (id, data) => fetch(`${API_BASE_URL}/prompts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(r => r.json()),
+  deletePrompt: (id) => fetch(`${API_BASE_URL}/prompts/${id}`, {
+    method: 'DELETE'
+  }).then(r => r.json()),
 
   // Versions
   listVersions: (promptId) => fetch(`${API_BASE_URL}/prompts/${promptId}/versions`).then(r => r.json()),

@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Plus, MessageSquare, ChevronRight } from 'lucide-react';
 import { api } from '../api';
 
-const Sidebar = ({ onSelectPrompt, selectedPromptId }) => {
+const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
   const [prompts, setPrompts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPrompt, setNewPrompt] = useState({ name: '', description: '' });
 
   useEffect(() => {
     loadPrompts();
-  }, []);
+  }, [refreshTrigger]);
 
   const loadPrompts = async () => {
     const data = await api.listPrompts();

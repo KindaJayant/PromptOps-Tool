@@ -42,6 +42,26 @@ def get_prompt(prompt_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Prompt not found")
     return db_prompt
 
+@app.put("/prompts/{prompt_id}", response_model=schemas.PromptSchema)
+def update_prompt(prompt_id: int, prompt_update: schemas.PromptCreate, db: Session = Depends(get_db)):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    db_prompt.name = prompt_update.name
+    db_prompt.description = prompt_update.description
+    db.commit()
+    db.refresh(db_prompt)
+    return db_prompt
+
+@app.delete("/prompts/{prompt_id}")
+def delete_prompt(prompt_id: int, db: Session = Depends(get_db)):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    db.delete(db_prompt)
+    db.commit()
+    return {"status": "deleted"}
+
 # Versions
 @app.post("/prompts/{prompt_id}/versions", response_model=schemas.PromptVersionSchema)
 def create_version(prompt_id: int, version: schemas.VersionCreate, db: Session = Depends(get_db)):
