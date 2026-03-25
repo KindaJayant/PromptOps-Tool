@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+httpx
+# anthropic (removed in favor of OpenRouter)
+python-dotenv
+python-multipart
+cors
+sqlite3
