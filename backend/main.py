@@ -5,8 +5,8 @@ from typing import List, Optional
 import difflib
 from datetime import datetime
 
-from . import models, schemas, database, llm
-from .database import engine, get_db
+import models, schemas, database, llm
+from database import engine, get_db
 
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)

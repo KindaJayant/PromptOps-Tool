@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .database import Base
+from database import Base
 
 class Prompt(Base):
     __tablename__ = "prompts"

@@ -55,6 +55,7 @@ promptops/
    ```
 5. Run the server:
    ```bash
+   # Make sure you are inside the backend directory
    uvicorn main:app --reload
    ```
    The API will be available at `http://localhost:8000`.
