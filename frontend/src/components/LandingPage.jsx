@@ -25,9 +25,9 @@ const LandingPage = ({ onGetStarted }) => {
             Go to Workspace
           </button>
           
-          <button className="vercel-button-outline px-6 py-2.5">
+          <a href="https://github.com/KindaJayant/PromptOps-Tool" target="_blank" rel="noopener noreferrer" className="vercel-button-outline px-6 py-2.5">
             Documentation
-          </button>
+          </a>
         </div>
       </div>
 

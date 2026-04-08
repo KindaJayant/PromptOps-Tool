@@ -8,6 +8,8 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
   const [latestVersion, setLatestVersion] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isDeployed, setIsDeployed] = useState(false);
+
   useEffect(() => {
     if (prompt && prompt.versions && prompt.versions.length > 0) {
       const sorted = [...prompt.versions].sort((a, b) => b.version_number - a.version_number);
@@ -31,6 +33,9 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
       setLatestVersion(newVersion);
       setCommitMessage('');
       onVersionSaved(newVersion);
+      
+      setIsDeployed(true);
+      setTimeout(() => setIsDeployed(false), 2000);
     } finally {
       setIsSaving(false);
     }
@@ -97,15 +102,19 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
 
             <button
                 onClick={handleSave}
-                disabled={isSaving || !content}
-                className="w-full sm:w-auto vercel-button px-6 py-2.5 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSaving || !content || isDeployed}
+                className={`w-full sm:w-auto px-6 py-2.5 flex items-center justify-center gap-2 text-sm disabled:opacity-50 transition-colors ${
+                  isDeployed ? "bg-emerald-600 text-white border border-emerald-500" : "vercel-button"
+                }`}
             >
                 {isSaving ? (
                     <div className="w-4 h-4 border-2 border-[#000]/30 border-t-[#000] rounded-full animate-spin" />
+                ) : isDeployed ? (
+                    <CheckCircle2 className="w-4 h-4" />
                 ) : (
                     <Save className="w-4 h-4" />
                 )}
-                {isSaving ? 'Saving...' : 'Deploy'}
+                {isSaving ? 'Deploying...' : isDeployed ? 'Deployed!' : 'Deploy'}
             </button>
         </div>
       </div>

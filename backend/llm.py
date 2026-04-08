@@ -7,7 +7,7 @@ from jinja2 import Template
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "arcee/arcee-trinity-large")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
 
 async def call_llm(template_content: str, input_data: str):
     # Try to parse input_data as JSON for Jinja2 context
