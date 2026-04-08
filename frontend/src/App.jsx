@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import EditorTab from './components/EditorTab';
 import HistoryTab from './components/HistoryTab';
 import TestsTab from './components/TestsTab';
 import DiffView from './components/DiffView';
+import LandingPage from './components/LandingPage';
 import { api } from './api';
-import { Edit3, Trash2, History, CheckSquare } from 'lucide-react';
+import { Edit3, Trash2, History, CheckSquare, Settings, Share2, Home } from 'lucide-react';
 
 function App() {
   const [selectedPrompt, setSelectedPrompt] = useState(null);
@@ -31,14 +32,13 @@ function App() {
   };
 
   const handleDeletePrompt = async () => {
-    if (confirm(`Are you sure you want to delete "${selectedPrompt.name}"? This will delete all versions and test data.\n\nThis action cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete "${selectedPrompt.name}"? This action cannot be undone.`)) {
       await api.deletePrompt(selectedPrompt.id);
       setSelectedPrompt(null);
       setSidebarRefresh(prev => prev + 1);
     }
   };
 
-  // Auto-refresh when prompt is updated
   const refreshPrompt = async () => {
     if (selectedPrompt) {
       const updated = await api.getPrompt(selectedPrompt.id);
@@ -51,7 +51,6 @@ function App() {
       setShowDiff(true);
       return;
     }
-    
     setDiffSelection(prev => {
       if (prev.includes(id)) return prev.filter(item => item !== id);
       if (prev.length < 2) return [...prev, id];
@@ -60,7 +59,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-black text-[#ededed] overflow-hidden font-sans selection:bg-[#333]">
       <Sidebar 
         onSelectPrompt={(p) => {
             setSelectedPrompt(p);
@@ -71,61 +70,71 @@ function App() {
         refreshTrigger={sidebarRefresh}
       />
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0a0a0a]">
         {selectedPrompt ? (
           <>
-            {/* Header / Tabs */}
-            <div className="bg-slate-800 border-b border-slate-700 px-6 pt-6 flex flex-col shrink-0">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                        {selectedPrompt.name}
-                        <span className="text-xs font-mono bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20">DB ID: {selectedPrompt.id}</span>
-                    </h1>
-                    <p className="text-slate-400 mt-1 max-w-xl truncate">{selectedPrompt.description}</p>
+            <header className="z-30 px-8 pt-8 pb-4 bg-[#0a0a0a] border-b border-[#222]">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3 mb-1">
+                        <button 
+                            onClick={() => setSelectedPrompt(null)}
+                            className="p-1.5 hover:bg-[#222] rounded-md text-[#a1a1aa] hover:text-[#ededed] transition-all"
+                        >
+                            <Home className="w-4 h-4" />
+                        </button>
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                            {selectedPrompt.name}
+                        </h1>
+                        <span className="text-[10px] font-mono bg-[#222] text-[#ededed] px-2 py-0.5 rounded border border-[#333] uppercase">
+                            v{selectedPrompt.versions.length > 0 ? selectedPrompt.versions[selectedPrompt.versions.length-1].version_number : 1}
+                        </span>
+                    </div>
+                    <p className="text-[#a1a1aa] text-sm ml-10">{selectedPrompt.description || 'No description provided.'}</p>
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={handleEditOpen} className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors" title="Edit Prompt Details">
-                        <Edit3 className="w-5 h-5" />
+                
+                <div className="flex items-center gap-2">
+                    <button className="vercel-button-outline px-3 py-1.5 flex items-center gap-2 text-sm">
+                        <Share2 className="w-3.5 h-3.5" />
+                        Share
                     </button>
-                    <button onClick={handleDeletePrompt} className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors" title="Delete Prompt">
-                        <Trash2 className="w-5 h-5" />
+                    <button onClick={handleEditOpen} className="vercel-button-outline p-2 text-[#a1a1aa] hover:text-[#ededed]">
+                        <Settings className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleDeletePrompt} className="p-2 border border-transparent rounded-md text-red-500 hover:bg-red-500/10 transition-colors">
+                        <Trash2 className="w-4 h-4" />
                     </button>
                 </div>
               </div>
 
-              <div className="flex gap-8">
+              <nav className="flex gap-8">
                 {[
-                  { id: 'editor', label: 'Editor', icon: Edit3 },
-                  { id: 'history', label: 'History', icon: History },
-                  { id: 'tests', label: 'Tests', icon: CheckSquare },
+                  { id: 'editor', label: 'Playground', icon: Edit3 },
+                  { id: 'history', label: 'Changelog', icon: History },
+                  { id: 'tests', label: 'Evals', icon: CheckSquare },
                 ].map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 pb-4 text-sm font-bold transition-all relative ${
-                      activeTab === tab.id ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
+                    className={`flex items-center gap-2 pb-3 text-sm font-medium transition-all relative ${
+                      activeTab === tab.id ? 'text-[#ededed]' : 'text-[#a1a1aa] hover:text-[#ededed]'
                     }`}
                   >
-                    <tab.icon className="w-4 h-4" />
+                    <tab.icon className={`w-4 h-4`} />
                     {tab.label}
                     {activeTab === tab.id && (
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-indigo-500 rounded-t-full shadow-[0_-4px_12px_rgba(99,102,241,0.5)]" />
+                      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#ededed]" />
                     )}
                   </button>
                 ))}
-              </div>
-            </div>
+              </nav>
+            </header>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto bg-slate-900/50 backdrop-blur-3xl">
+            <div className="flex-1 overflow-y-auto bg-transparent relative z-10 custom-scrollbar">
               {activeTab === 'editor' && (
                 <EditorTab 
                   prompt={selectedPrompt} 
-                  onVersionSaved={() => {
-                      refreshPrompt();
-                      // Small delay to let the animation play?
-                  }} 
+                  onVersionSaved={refreshPrompt} 
                 />
               )}
               {activeTab === 'history' && (
@@ -140,15 +149,7 @@ function App() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-40">
-            <div className="bg-slate-800 p-8 rounded-full border-4 border-slate-700 shadow-2xl">
-                <Edit3 className="w-16 h-16 text-slate-600" />
-            </div>
-            <div className="text-center">
-                <h3 className="text-2xl font-bold text-white mb-2">Select a prompt</h3>
-                <p className="text-slate-400">Choose a prompt from the sidebar or create a new one to begin.</p>
-            </div>
-          </div>
+          <LandingPage onGetStarted={() => setSidebarRefresh(r => r + 1)} />
         )}
       </main>
 
@@ -164,43 +165,41 @@ function App() {
       )}
 
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md shadow-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Edit Prompt Details</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="vercel-card w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold mb-6">Modify Prompt</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                <label className="block text-sm font-medium text-[#a1a1aa] mb-1.5">Name</label>
                 <input
                   type="text"
                   required
                   value={editPromptData.name}
                   onChange={(e) => setEditPromptData({ ...editPromptData, name: e.target.value })}
-                  placeholder="e.g. summarizer-prompt"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full bg-[#111] border border-[#333] rounded-md px-3 py-2 text-[#ededed] focus:border-[#666] focus:outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                <label className="block text-sm font-medium text-[#a1a1aa] mb-1.5">Description</label>
                 <textarea
                   value={editPromptData.description}
                   onChange={(e) => setEditPromptData({ ...editPromptData, description: e.target.value })}
-                  placeholder="Prompt for summarizing articles..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white h-24 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full bg-[#111] border border-[#333] rounded-md px-3 py-2 text-[#ededed] h-24 focus:border-[#666] focus:outline-none transition-all resize-none"
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                  className="vercel-button-outline px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all font-medium"
+                  className="vercel-button px-4 py-2"
                 >
-                  Save Changes
+                  Save
                 </button>
               </div>
             </form>

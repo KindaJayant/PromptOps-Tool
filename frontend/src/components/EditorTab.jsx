@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Terminal } from 'lucide-react';
+import { Save, Terminal, Code2, Info, CheckCircle2 } from 'lucide-react';
 import { api } from '../api';
 
 const EditorTab = ({ prompt, onVersionSaved }) => {
@@ -36,58 +36,77 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
     }
   };
 
-  if (!prompt) return (
-    <div className="h-full flex items-center justify-center text-slate-500 italic">
-      Select a prompt to start editing
-    </div>
-  );
+  if (!prompt) return null;
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto py-6 px-4 space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold text-white">{prompt.name}</h2>
-          <p className="text-slate-400 text-sm mt-1">{prompt.description || 'No description'}</p>
+    <div className="flex flex-col h-full max-w-6xl mx-auto py-8 px-8 space-y-6 animate-in fade-in transition-all">
+      {/* Workspace Header */}
+      <div className="flex justify-between items-center bg-[#111] p-6 rounded-md border border-[#333]">
+        <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-[#222] rounded flex items-center justify-center border border-[#333]">
+                <Code2 className="w-5 h-5 text-[#ededed]" />
+            </div>
+            <div>
+                <h2 className="text-xl font-semibold text-[#ededed] mb-1">Editor</h2>
+                <div className="flex items-center gap-2 text-[#a1a1aa] text-sm">
+                    <Info className="w-3.5 h-3.5" />
+                    Edit and version your template
+                </div>
+            </div>
         </div>
-        <div className="text-right">
-          <span className="text-xs font-mono text-indigo-400 uppercase tracking-widest">Current Version</span>
-          <p className="text-xl font-bold text-white">v{latestVersion?.version_number || 0}</p>
+        
+        <div className="flex flex-col items-end">
+            <span className="text-[10px] font-mono text-[#666] uppercase tracking-wider mb-1">Status</span>
+            <div className="flex items-center gap-2 border border-[#333] bg-[#000] px-3 py-1.5 rounded-full">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-xs font-medium text-[#ededed]">Deployed v{latestVersion?.version_number || 0}</span>
+            </div>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col space-y-4">
-        <div className="flex-1 relative group">
-          <div className="absolute inset-0 bg-indigo-500/5 rounded-xl blur-xl group-focus-within:bg-indigo-500/10 transition-all"></div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="relative w-full h-full bg-slate-800/50 border border-slate-700 rounded-xl p-6 text-slate-100 font-mono text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none shadow-inner"
-            placeholder="Write your system prompt here..."
-          />
-        </div>
-
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1 text-slate-400">
-              <Terminal className="w-3.5 h-3.5" />
-              <span className="text-xs uppercase tracking-wider font-semibold">Commit Message</span>
+        {/* Editor Wrapper */}
+        <div className="flex-1 relative flex flex-col">
+          <div className="relative h-full bg-[#000] border border-[#333] rounded-md overflow-hidden flex flex-col focus-within:border-[#666] transition-colors">
+            <div className="px-4 py-2 bg-[#111] border-b border-[#333] flex items-center justify-between">
+                <span className="text-xs font-mono text-[#888]">system_instruction.txt</span>
+                <span className="text-xs font-mono text-[#666]">UTF-8</span>
             </div>
-            <input
-              type="text"
-              value={commitMessage}
-              onChange={(e) => setCommitMessage(e.target.value)}
-              placeholder="What changed in this version?"
-              className="w-full bg-transparent text-slate-100 placeholder-slate-600 focus:outline-none text-sm"
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="flex-1 w-full bg-transparent p-6 text-[#ededed] font-mono text-[13px] leading-relaxed focus:outline-none resize-none placeholder-[#444] selection:bg-[#333]"
+              placeholder="Inject model intelligence here..."
             />
           </div>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !content}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg transition-all shadow-lg shadow-indigo-500/20 font-bold"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Version'}
-          </button>
+        </div>
+
+        {/* Commitment Control */}
+        <div className="bg-[#111] border border-[#333] rounded-md p-5 flex flex-col sm:flex-row items-center gap-4">
+            
+            <div className="flex-1 w-full flex items-center gap-3 bg-[#000] border border-[#333] rounded-md px-4 py-2 focus-within:border-[#666] transition-colors">
+                <Terminal className="w-4 h-4 text-[#888]" />
+                <input
+                    type="text"
+                    value={commitMessage}
+                    onChange={(e) => setCommitMessage(e.target.value)}
+                    placeholder="Changelog (e.g. Added safety constraints)"
+                    className="w-full bg-transparent text-[#ededed] text-sm placeholder-[#666] focus:outline-none"
+                />
+            </div>
+
+            <button
+                onClick={handleSave}
+                disabled={isSaving || !content}
+                className="w-full sm:w-auto vercel-button px-6 py-2.5 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isSaving ? (
+                    <div className="w-4 h-4 border-2 border-[#000]/30 border-t-[#000] rounded-full animate-spin" />
+                ) : (
+                    <Save className="w-4 h-4" />
+                )}
+                {isSaving ? 'Saving...' : 'Deploy'}
+            </button>
         </div>
       </div>
     </div>

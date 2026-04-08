@@ -75,3 +75,21 @@ class TestRunResults(BaseModel):
 class DiffLine(BaseModel):
     type: str # "added", "removed", "unchanged"
     content: str
+
+# Analytics Schemas
+class AnalyticsSchema(BaseModel):
+    version_id: int
+    version_number: int
+    pass_rate: float
+    avg_score: float
+    total_runs: int
+
+class PromptAnalytics(BaseModel):
+    prompt_id: int
+    name: str
+    version_stats: List[AnalyticsSchema]
+
+# Export Schema
+class ExportSchema(BaseModel):
+    prompt: PromptSchema
+    test_cases: List[TestCaseSchema]

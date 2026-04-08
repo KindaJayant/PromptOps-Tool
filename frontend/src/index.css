@@ -1,22 +1,76 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body {
-  @apply bg-slate-900 text-slate-100;
-  margin: 0;
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+:root {
+  --bg-deep: #000000;
+  --bg-accent: #000000;
+  --border-light: #222222;
+  --border-hover: #333333;
+  --text-main: #ededed;
+  --text-dim: #a1a1aa;
+  
+  --primary: #ffffff;
+  --primary-invert: #000000;
 }
 
-/* Custom scrollbar for dark theme */
+body {
+  margin: 0;
+  background: var(--bg-deep);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.vercel-card {
+  background: #000;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
+}
+
+.vercel-card:hover {
+  border-color: var(--border-hover);
+}
+
+.vercel-button {
+  background: #fff;
+  color: #000;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.vercel-button:hover {
+  background: #ededed;
+}
+
+.vercel-button-outline {
+  background: transparent;
+  color: #ededed;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.vercel-button-outline:hover {
+  background: #111;
+  border-color: var(--border-hover);
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 4px;
+  background: #333;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #444;
 }

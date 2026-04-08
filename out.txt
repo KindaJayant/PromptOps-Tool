@@ -1,0 +1,1 @@
+{"error":{"message":"arcee/arcee-trinity-large is not a valid model ID","code":400},"user_id":"user_39lGBeBaGYrmSzFPIhCxEXVMSEQ"}

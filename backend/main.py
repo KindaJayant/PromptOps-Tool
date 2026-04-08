@@ -1,9 +1,11 @@
+import asyncio
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import difflib
 from datetime import datetime
+import json
 
 import models, schemas, database, llm
 from database import engine, get_db
@@ -171,19 +173,9 @@ def list_test_cases(prompt_id: int, db: Session = Depends(get_db)):
     return db.query(models.TestCase).filter(models.TestCase.prompt_id == prompt_id).all()
 
 # Test Runs
-@app.post("/versions/{version_id}/run-tests", response_model=schemas.TestRunResults)
-async def run_tests(version_id: int, db: Session = Depends(get_db)):
-    db_version = db.query(models.PromptVersion).filter(models.PromptVersion.id == version_id).first()
-    if not db_version:
-        raise HTTPException(status_code=404, detail="Version not found")
-    
-    test_cases = db.query(models.TestCase).filter(models.TestCase.prompt_id == db_version.prompt_id).all()
-    
-    results = []
-    passed_count = 0
-    
-    for tc in test_cases:
-        actual_output = await llm.call_llm(db_version.content, tc.input)
+async def run_single_test(tc: models.TestCase, version_content: str, version_id: int, db: Session):
+    try:
+        actual_output = await llm.call_llm(version_content, tc.input)
         judge_result = await llm.run_judge(tc.expected_output, actual_output)
         
         score = judge_result.get("score", 0.0)
@@ -198,6 +190,35 @@ async def run_tests(version_id: int, db: Session = Depends(get_db)):
             reasoning=reasoning,
             passed=passed
         )
+        return db_run, passed
+    except Exception as e:
+        db_run = models.TestRun(
+            prompt_version_id=version_id,
+            test_case_id=tc.id,
+            actual_output=f"Error: {str(e)}",
+            score=0.0,
+            reasoning="Test run failed due to LLM error.",
+            passed=False
+        )
+        return db_run, False
+
+@app.post("/versions/{version_id}/run-tests", response_model=schemas.TestRunResults)
+async def run_tests(version_id: int, db: Session = Depends(get_db)):
+    db_version = db.query(models.PromptVersion).filter(models.PromptVersion.id == version_id).first()
+    if not db_version:
+        raise HTTPException(status_code=404, detail="Version not found")
+    
+    test_cases = db.query(models.TestCase).filter(models.TestCase.prompt_id == db_version.prompt_id).all()
+    if not test_cases:
+        return {"results": [], "pass_rate": 0.0}
+    
+    # Run tests in parallel
+    tasks = [run_single_test(tc, db_version.content, version_id, db) for tc in test_cases]
+    run_output = await asyncio.gather(*tasks)
+    
+    results = []
+    passed_count = 0
+    for db_run, passed in run_output:
         db.add(db_run)
         results.append(db_run)
         if passed:
@@ -213,3 +234,53 @@ async def run_tests(version_id: int, db: Session = Depends(get_db)):
 @app.get("/versions/{version_id}/test-runs", response_model=List[schemas.TestRunSchema])
 def list_test_runs(version_id: int, db: Session = Depends(get_db)):
     return db.query(models.TestRun).filter(models.TestRun.prompt_version_id == version_id).all()
+
+# Analytics & Export
+@app.get("/prompts/{prompt_id}/analytics", response_model=schemas.PromptAnalytics)
+def get_analytics(prompt_id: int, db: Session = Depends(get_db)):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    version_stats = []
+    for version in db_prompt.versions:
+        runs = version.test_runs
+        if not runs:
+            version_stats.append({
+                "version_id": version.id,
+                "version_number": version.version_number,
+                "pass_rate": 0.0,
+                "avg_score": 0.0,
+                "total_runs": 0
+            })
+            continue
+        
+        passed = sum(1 for r in runs if r.passed)
+        total_score = sum(r.score for r in runs if r.score is not None)
+        
+        version_stats.append({
+            "version_id": version.id,
+            "version_number": version.version_number,
+            "pass_rate": passed / len(runs),
+            "avg_score": total_score / len(runs),
+            "total_runs": len(runs)
+        })
+        
+    return {
+        "prompt_id": db_prompt.id,
+        "name": db_prompt.name,
+        "version_stats": version_stats
+    }
+
+@app.get("/prompts/{prompt_id}/export", response_model=schemas.ExportSchema)
+def export_prompt(prompt_id: int, db: Session = Depends(get_db)):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+    
+    test_cases = db.query(models.TestCase).filter(models.TestCase.prompt_id == prompt_id).all()
+    
+    return {
+        "prompt": db_prompt,
+        "test_cases": test_cases
+    }
