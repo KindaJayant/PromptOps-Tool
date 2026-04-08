@@ -1,71 +1,76 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-deep: #050505;
-  --bg-accent: radial-gradient(circle at top, #1e1b4b 0%, #050505 100%);
-  --glass: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --primary: #6366f1;
-  --secondary: #a855f7;
-  --accent: #ec4899;
-  --text-dim: #94a3b8;
+  --bg-deep: #000000;
+  --bg-accent: #000000;
+  --border-light: #222222;
+  --border-hover: #333333;
+  --text-main: #ededed;
+  --text-dim: #a1a1aa;
+  
+  --primary: #ffffff;
+  --primary-invert: #000000;
 }
 
 body {
   margin: 0;
   background: var(--bg-deep);
-  background-image: var(--bg-accent);
-  color: #f8fafc;
+  color: var(--text-main);
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4 {
-  font-family: 'Outfit', sans-serif;
-  letter-spacing: -0.02em;
+.vercel-card {
+  background: #000;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
 }
 
-.glass-card {
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 1.5rem;
+.vercel-card:hover {
+  border-color: var(--border-hover);
 }
 
-.glow-indigo {
-  box-shadow: 0 0 50px -12px rgba(99, 102, 241, 0.3);
+.vercel-button {
+  background: #fff;
+  color: #000;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.text-gradient {
-  background: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.vercel-button:hover {
+  background: #ededed;
+}
+
+.vercel-button-outline {
+  background: transparent;
+  color: #ededed;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.vercel-button-outline:hover {
+  background: #111;
+  border-color: var(--border-hover);
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #333;
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+  background: #444;
 }

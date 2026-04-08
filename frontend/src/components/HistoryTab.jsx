@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tag, RotateCcw, GitCompare, Calendar, CheckCircle2 } from 'lucide-react';
+import { Tag, RotateCcw, GitCompare, Calendar, CheckCircle2, History } from 'lucide-react';
 import { api } from '../api';
 
 const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] }) => {
@@ -19,27 +19,32 @@ const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] 
   };
 
   if (!prompt || !prompt.versions || prompt.versions.length === 0) {
-    return <div className="p-8 text-center text-slate-500">No history available yet.</div>;
+    return (
+        <div className="flex flex-col items-center justify-center py-20 opacity-40">
+            <History className="w-12 h-12 mb-4 text-[#888]" />
+            <p className="text-sm font-medium text-[#888]">No history available yet.</p>
+        </div>
+    );
   }
 
   const sortedVersions = [...prompt.versions].sort((a, b) => b.version_number - a.version_number);
 
   return (
-    <div className="max-w-5xl mx-auto py-6 px-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
-        <table className="w-full text-left">
+    <div className="max-w-5xl mx-auto py-8 px-8 animate-in fade-in duration-300">
+      <div className="bg-[#111] border border-[#333] rounded-md overflow-hidden">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-900/50 border-b border-slate-700">
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Version</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Commit Message</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Tag</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+            <tr className="bg-[#0a0a0a] border-b border-[#333]">
+              <th className="px-6 py-4 text-xs font-semibold text-[#888] uppercase tracking-wider">Version</th>
+              <th className="px-6 py-4 text-xs font-semibold text-[#888] uppercase tracking-wider">Commit Message</th>
+              <th className="px-6 py-4 text-xs font-semibold text-[#888] uppercase tracking-wider">Tag</th>
+              <th className="px-6 py-4 text-xs font-semibold text-[#888] uppercase tracking-wider">Date</th>
+              <th className="px-6 py-4 text-xs font-semibold text-[#888] uppercase tracking-wider text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700">
+          <tbody className="divide-y divide-[#333]">
             {sortedVersions.map((v) => (
-              <tr key={v.id} className="hover:bg-slate-700/30 transition-colors group">
+              <tr key={v.id} className="hover:bg-[#1a1a1a] transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <input
@@ -47,30 +52,34 @@ const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] 
                       checked={selectedForDiff.includes(v.id)}
                       onChange={() => onSelectForDiff(v.id)}
                       disabled={selectedForDiff.length >= 2 && !selectedForDiff.includes(v.id)}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
+                      className="w-4 h-4 rounded border-[#444] bg-[#000] text-[#ededed] focus:ring-[#666] focus:ring-offset-[#111] cursor-pointer"
                     />
-                    <span className="font-mono font-bold text-white uppercase text-xs px-2 py-1 bg-slate-700 rounded">v{v.version_number}</span>
+                    <span className="font-mono text-[#ededed] text-xs px-2 py-1 bg-[#222] border border-[#333] rounded-md">v{v.version_number}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-slate-300 text-sm max-w-xs truncate">{v.commit_message || '-'}</td>
+                <td className="px-6 py-4">
+                    <p className="text-[#a1a1aa] font-medium text-sm max-w-sm truncate whitespace-pre group-hover:text-[#ededed] transition-colors">
+                        {v.commit_message || '-'}
+                    </p>
+                </td>
                 <td className="px-6 py-4">
                   {v.tag ? (
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      v.tag === 'production' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                      v.tag === 'staging' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider ${
+                      v.tag === 'production' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900' :
+                      v.tag === 'staging' ? 'bg-amber-950/50 text-amber-400 border border-amber-900' :
+                      'bg-blue-950/50 text-blue-400 border border-blue-900'
                     }`}>
-                      <CheckCircle2 className="w-3 h-3" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       {v.tag}
                     </span>
                   ) : (
-                    <span className="text-slate-600 text-xs">—</span>
+                    <span className="text-[#444]">—</span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-slate-400 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(v.created_at).toLocaleDateString()}
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2 text-[#a1a1aa] text-sm">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(v.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right">
@@ -78,18 +87,19 @@ const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] 
                     <div className="relative">
                       <button
                         onClick={() => setIsTagging(isTagging === v.id ? null : v.id)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-600 rounded-lg transition-all"
+                        className="p-2 text-[#888] hover:text-[#ededed] hover:bg-[#222] rounded-md transition-colors"
                         title="Set Tag"
                       >
                         <Tag className="w-4 h-4" />
                       </button>
                       {isTagging === v.id && (
-                        <div className="absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-20 py-1 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-36 bg-[#000] border border-[#333] rounded-md shadow-xl z-50 py-1">
+                          <div className="px-3 py-1.5 text-[10px] font-semibold text-[#666] uppercase tracking-wider border-b border-[#222]">Assign Tag</div>
                           {['production', 'staging', 'experiment'].map(tag => (
                             <button
                               key={tag}
                               onClick={() => handleTag(v.id, tag)}
-                              className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors capitalize"
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-[#a1a1aa] hover:bg-[#111] hover:text-[#ededed] transition-colors capitalize"
                             >
                               {tag}
                             </button>
@@ -99,7 +109,7 @@ const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] 
                     </div>
                     <button
                       onClick={() => handleRollback(v.id)}
-                      className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-600 rounded-lg transition-all"
+                      className="p-2 text-[#888] hover:text-[#ededed] hover:bg-[#222] rounded-md transition-colors"
                       title="Rollback to this version"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -113,12 +123,12 @@ const HistoryTab = ({ prompt, onRollback, onSelectForDiff, selectedForDiff = [] 
       </div>
       
       {selectedForDiff.length === 2 && (
-        <div className="mt-6 flex justify-center">
+        <div className="mt-8 flex justify-center animate-in fade-in duration-300">
           <button 
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl transition-all shadow-xl shadow-indigo-500/20 font-bold"
+            className="vercel-button-outline flex items-center gap-2 px-6 py-2.5"
             onClick={() => onSelectForDiff('compare')}
           >
-            <GitCompare className="w-5 h-5" />
+            <GitCompare className="w-4 h-4" />
             Compare Versions
           </button>
         </div>
