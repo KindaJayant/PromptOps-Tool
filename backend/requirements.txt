@@ -6,3 +6,4 @@ httpx
 # anthropic (removed in favor of OpenRouter)
 python-dotenv
 python-multipart
+jinja2

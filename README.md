@@ -19,16 +19,17 @@ promptops/
 │   ├── models.py        # SQLAlchemy database models
 │   ├── database.py      # SQLite engine & session setup
 │   ├── schemas.py       # Pydantic models for validation
-│   ├── llm.py           # OpenRouter API & LLM judge logic
+│   ├── llm.py           # OpenRouter integration & Jinja2 logic
+│   ├── cli.py           # [NEW] Headless CLI diagnostic tool
 │   ├── requirements.txt
 │   └── .env             # API Keys (not in git)
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx      # Main application shell
-│   │   ├── api.js       # Backend fetch utilities
-│   │   └── components/  # Modular UI components
-│   └── package.json
-└── README.md
+...
+```
+
+## Setup Instructions
+
+...
 ```
 
 ## Setup Instructions
@@ -82,5 +83,20 @@ promptops/
 - **Rollback:** Restore any previous version as the new latest.
 - **Diff View:** Compare two versions side-by-side with color-coded changes.
 - **Test Suite:** Create test cases and run them against any version.
+- **Parallel Execution:** [NEW] Run multiple test cases concurrently using `asyncio.gather`.
+- **Prompt Templating:** [NEW] Support for dynamic prompts using **Jinja2** variables (e.g., `{{variable}}`).
 - **LLM Judge:** Automatically evaluate prompt outputs using an LLM judge with scoring and reasoning.
+- **Analytics:** [NEW] Track pass rates and average scores across prompt versions.
+- **CLI Tool:** [NEW] Manage prompts and run tests directly from the terminal.
 - **Tags:** Label versions as `production`, `staging`, or `experiment`.
+
+## CLI Usage
+
+Run tests for a specific version from the terminal:
+```bash
+python backend/cli.py run <version_id>
+```
+List all prompts:
+```bash
+python backend/cli.py list
+```
