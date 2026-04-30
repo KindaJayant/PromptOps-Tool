@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Terminal, Code2, Info, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Play, Save, Sparkles } from 'lucide-react';
 import { api } from '../api';
 
-const EditorTab = ({ prompt, onVersionSaved }) => {
+const VARIABLE_PATTERN = /{{\s*([a-zA-Z0-9_.-]+)\s*}}/g;
+
+const EditorTab = ({ prompt, analytics, onVersionSaved }) => {
   const [content, setContent] = useState('');
   const [commitMessage, setCommitMessage] = useState('');
   const [latestVersion, setLatestVersion] = useState(null);
+  const [inputData, setInputData] = useState('');
+  const [runResult, setRunResult] = useState(null);
+  const [runError, setRunError] = useState('');
+  const [saveNotice, setSaveNotice] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [isDeployed, setIsDeployed] = useState(false);
-
   useEffect(() => {
-    if (prompt && prompt.versions && prompt.versions.length > 0) {
+    if (prompt?.versions?.length) {
       const sorted = [...prompt.versions].sort((a, b) => b.version_number - a.version_number);
       setLatestVersion(sorted[0]);
       setContent(sorted[0].content);
@@ -19,23 +24,65 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
       setLatestVersion(null);
       setContent('');
     }
+
     setCommitMessage('');
+    setInputData('');
+    setRunResult(null);
+    setRunError('');
+    setSaveNotice('');
   }, [prompt]);
 
-  const handleSave = async () => {
-    if (!content) return;
-    setIsSaving(true);
+  const variables = useMemo(() => {
+    const matches = [...content.matchAll(VARIABLE_PATTERN)].map((match) => match[1]);
+    return [...new Set(matches)];
+  }, [content]);
+
+  const parsedInputState = useMemo(() => {
+    if (!inputData.trim()) return { valid: true, mode: 'empty' };
     try {
-      const newVersion = await api.createVersion(prompt.id, {
+      JSON.parse(inputData);
+      return { valid: true, mode: 'json' };
+    } catch {
+      return { valid: false, mode: 'text' };
+    }
+  }, [inputData]);
+
+  const latestStats = analytics?.version_stats?.find((stat) => stat.version_id === latestVersion?.id);
+
+  const handleRun = async () => {
+    if (!content.trim()) return;
+
+    setIsRunning(true);
+    setRunError('');
+
+    try {
+      const data = await api.runPlayground(prompt.id, {
         content,
-        commit_message: commitMessage || `Update v${(latestVersion?.version_number || 0) + 1}`
+        input_data: inputData,
       });
-      setLatestVersion(newVersion);
+      setRunResult(data);
+    } catch (error) {
+      setRunError(error.message);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!content.trim() || !commitMessage.trim()) return;
+
+    setIsSaving(true);
+    setSaveNotice('');
+
+    try {
+      await api.createVersion(prompt.id, {
+        content,
+        commit_message: commitMessage.trim(),
+      });
       setCommitMessage('');
-      onVersionSaved(newVersion);
-      
-      setIsDeployed(true);
-      setTimeout(() => setIsDeployed(false), 2000);
+      onVersionSaved();
+      setSaveNotice('Version saved.');
+      window.setTimeout(() => setSaveNotice(''), 2000);
     } finally {
       setIsSaving(false);
     }
@@ -44,82 +91,173 @@ const EditorTab = ({ prompt, onVersionSaved }) => {
   if (!prompt) return null;
 
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto py-8 px-8 space-y-6 animate-in fade-in transition-all">
-      {/* Workspace Header */}
-      <div className="flex justify-between items-center bg-[#111] p-6 rounded-md border border-[#333]">
-        <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-[#222] rounded flex items-center justify-center border border-[#333]">
-                <Code2 className="w-5 h-5 text-[#ededed]" />
-            </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+        <div className="rounded-2xl border border-[#1c2230] bg-[#10141c]">
+          <div className="flex items-center justify-between border-b border-[#1d2330] px-5 py-4">
             <div>
-                <h2 className="text-xl font-semibold text-[#ededed] mb-1">Editor</h2>
-                <div className="flex items-center gap-2 text-[#a1a1aa] text-sm">
-                    <Info className="w-3.5 h-3.5" />
-                    Edit and version your template
-                </div>
+              <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">Prompt body</div>
+              <h2 className="mt-1 text-lg font-semibold text-white">Edit the working draft</h2>
             </div>
-        </div>
-        
-        <div className="flex flex-col items-end">
-            <span className="text-[10px] font-mono text-[#666] uppercase tracking-wider mb-1">Status</span>
-            <div className="flex items-center gap-2 border border-[#333] bg-[#000] px-3 py-1.5 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-xs font-medium text-[#ededed]">Deployed v{latestVersion?.version_number || 0}</span>
-            </div>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col space-y-4">
-        {/* Editor Wrapper */}
-        <div className="flex-1 relative flex flex-col">
-          <div className="relative h-full bg-[#000] border border-[#333] rounded-md overflow-hidden flex flex-col focus-within:border-[#666] transition-colors">
-            <div className="px-4 py-2 bg-[#111] border-b border-[#333] flex items-center justify-between">
-                <span className="text-xs font-mono text-[#888]">system_instruction.txt</span>
-                <span className="text-xs font-mono text-[#666]">UTF-8</span>
-            </div>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="flex-1 w-full bg-transparent p-6 text-[#ededed] font-mono text-[13px] leading-relaxed focus:outline-none resize-none placeholder-[#444] selection:bg-[#333]"
-              placeholder="Inject model intelligence here..."
-            />
+            {latestVersion && (
+              <div className="rounded-full border border-[#273041] bg-[#141925] px-3 py-1 text-xs text-[#c8cfde]">
+                Drafted from v{latestVersion.version_number}
+              </div>
+            )}
           </div>
+
+          <textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            className="min-h-[540px] w-full resize-none bg-transparent px-5 py-5 font-mono text-[13px] leading-7 text-[#edf1f7] outline-none placeholder:text-[#4e566b]"
+            placeholder="Write the prompt you want to evaluate."
+          />
         </div>
 
-        {/* Commitment Control */}
-        <div className="bg-[#111] border border-[#333] rounded-md p-5 flex flex-col sm:flex-row items-center gap-4">
-            
-            <div className="flex-1 w-full flex items-center gap-3 bg-[#000] border border-[#333] rounded-md px-4 py-2 focus-within:border-[#666] transition-colors">
-                <Terminal className="w-4 h-4 text-[#888]" />
-                <input
-                    type="text"
-                    value={commitMessage}
-                    onChange={(e) => setCommitMessage(e.target.value)}
-                    placeholder="Changelog (e.g. Added safety constraints)"
-                    className="w-full bg-transparent text-[#ededed] text-sm placeholder-[#666] focus:outline-none"
-                />
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">Playground</div>
+                <h2 className="mt-1 text-lg font-semibold text-white">Run before you save</h2>
+              </div>
+              {latestStats?.total_runs ? (
+                <div className="text-right text-xs text-[#8f97ab]">
+                  <div>{Math.round(latestStats.pass_rate * 100)}% pass rate</div>
+                  <div>{latestStats.total_runs} eval runs on latest version</div>
+                </div>
+              ) : null}
+            </div>
+
+            {variables.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-2 text-xs uppercase tracking-[0.18em] text-[#6d768d]">Detected variables</div>
+                <div className="flex flex-wrap gap-2">
+                  {variables.map((variable) => (
+                    <span
+                      key={variable}
+                      className="rounded-full border border-[#273041] bg-[#141925] px-3 py-1 text-xs text-[#c8cfde]"
+                    >
+                      {variable}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5">
+              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Input data</label>
+              <textarea
+                value={inputData}
+                onChange={(event) => setInputData(event.target.value)}
+                className="h-32 w-full resize-none rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 font-mono text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b] placeholder:text-[#546078]"
+                placeholder={variables.length ? '{\n  "variable": "value"\n}' : 'Optional JSON or plain text input'}
+              />
+              {!parsedInputState.valid && (
+                <p className="mt-2 text-sm text-[#f6b38a]">
+                  This will be treated as plain text input unless you switch it to valid JSON.
+                </p>
+              )}
             </div>
 
             <button
-                onClick={handleSave}
-                disabled={isSaving || !content || isDeployed}
-                className={`w-full sm:w-auto px-6 py-2.5 flex items-center justify-center gap-2 text-sm disabled:opacity-50 transition-colors ${
-                  isDeployed ? "bg-emerald-600 text-white border border-emerald-500" : "vercel-button"
-                }`}
+              onClick={handleRun}
+              disabled={isRunning || !content.trim()}
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#f3f4f6] px-4 py-2.5 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {isSaving ? (
-                    <div className="w-4 h-4 border-2 border-[#000]/30 border-t-[#000] rounded-full animate-spin" />
-                ) : isDeployed ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                ) : (
-                    <Save className="w-4 h-4" />
-                )}
-                {isSaving ? 'Deploying...' : isDeployed ? 'Deployed!' : 'Deploy'}
+              {isRunning ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0d1016]/20 border-t-[#0d1016]" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isRunning ? 'Running...' : 'Run prompt'}
             </button>
+
+            {runError && (
+              <div className="mt-4 rounded-xl border border-[#4f2a2a] bg-[#1a1010] px-4 py-3 text-sm text-[#ffb3ad]">
+                {runError}
+              </div>
+            )}
+
+            <div className="mt-5 space-y-4">
+              <OutputPanel
+                label="Rendered prompt"
+                value={runResult?.rendered_prompt}
+                emptyLabel="Run the prompt to inspect the final rendered text."
+              />
+              <OutputPanel
+                label="Model output"
+                value={runResult?.actual_output}
+                emptyLabel="The model response will show up here."
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
+            <div className="flex items-center gap-2 text-white">
+              <Sparkles className="h-4 w-4 text-[#c8cfde]" />
+              <h2 className="text-lg font-semibold">Save a real version</h2>
+            </div>
+            <p className="mt-1 text-sm text-[#8f97ab]">
+              Keep the history readable. Describe what actually changed in this revision.
+            </p>
+
+            <div className="mt-4">
+              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Change summary</label>
+              <input
+                type="text"
+                value={commitMessage}
+                onChange={(event) => setCommitMessage(event.target.value)}
+                className="w-full rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b] placeholder:text-[#546078]"
+                placeholder="Example: tightened output format and clarified fallback behavior"
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="text-sm text-[#8f97ab]">
+                {saveNotice ? (
+                  <span className="inline-flex items-center gap-2 text-[#b7f5c9]">
+                    <CheckCircle2 className="h-4 w-4" />
+                    {saveNotice}
+                  </span>
+                ) : (
+                  'A saved version becomes the baseline for history and eval runs.'
+                )}
+              </div>
+
+              <button
+                onClick={handleSave}
+                disabled={isSaving || !content.trim() || !commitMessage.trim()}
+                className="inline-flex items-center gap-2 rounded-md bg-[#f3f4f6] px-4 py-2.5 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0d1016]/20 border-t-[#0d1016]" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {isSaving ? 'Saving...' : 'Save version'}
+              </button>
+            </div>
+          </section>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
+
+function OutputPanel({ label, value, emptyLabel }) {
+  return (
+    <div>
+      <div className="mb-2 text-xs uppercase tracking-[0.18em] text-[#6d768d]">{label}</div>
+      <div className="min-h-[148px] rounded-xl border border-[#273041] bg-[#0d1118] px-4 py-3 font-mono text-sm leading-7 text-[#edf1f7]">
+        {value ? (
+          <pre className="whitespace-pre-wrap break-words font-mono">{value}</pre>
+        ) : (
+          <p className="font-sans text-sm text-[#6d768d]">{emptyLabel}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default EditorTab;

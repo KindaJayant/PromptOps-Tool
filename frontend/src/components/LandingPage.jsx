@@ -1,63 +1,72 @@
 import React from 'react';
-import { GitBranch, Activity, Cpu } from 'lucide-react';
+import { ArrowRight, Beaker, GitBranch, PlayCircle } from 'lucide-react';
 
 const LandingPage = ({ onGetStarted }) => {
   return (
-    <div className="min-h-full flex flex-col items-center justify-center px-6 py-20 bg-black selection:bg-gray-800">
-      
-      {/* Hero Section */}
-      <div className="max-w-4xl text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        
-        <h1 className="text-5xl md:text-7xl font-bold text-[#ededed] tracking-tighter leading-tight">
-          Master Your <br className="hidden md:block"/> Model's Mind
-        </h1>
-        
-        <p className="text-lg text-[#a1a1aa] max-w-2xl mx-auto leading-normal">
-          The version control system for LLM prompts. 
-          Automated testing, side-by-side diffing, and AI evaluation.
-        </p>
+    <div className="flex min-h-full items-center justify-center px-6 py-16">
+      <div className="grid w-full max-w-6xl gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-10 shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+          <div className="mb-5 inline-flex rounded-full border border-[#273041] bg-[#151b27] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#8f97ab]">
+            PromptOps
+          </div>
+          <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-white md:text-6xl">
+            Ship prompts with less noise and better feedback.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-[#8f97ab]">
+            Version prompts, run them live, compare changes, and keep eval regressions from slipping into production.
+          </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-          <button 
-            onClick={onGetStarted}
-            className="vercel-button px-6 py-2.5 flex items-center justify-center"
-          >
-            Go to Workspace
-          </button>
-          
-          <a href="https://github.com/KindaJayant/PromptOps-Tool" target="_blank" rel="noopener noreferrer" className="vercel-button-outline px-6 py-2.5">
-            Documentation
-          </a>
-        </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              onClick={onGetStarted}
+              className="inline-flex items-center gap-2 rounded-md bg-[#f3f4f6] px-5 py-3 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white"
+            >
+              Open workspace
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <a
+              href="https://github.com/KindaJayant/PromptOps-Tool"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-[#273041] bg-transparent px-5 py-3 text-sm text-[#c8cfde] transition-colors hover:border-[#39445a] hover:text-white"
+            >
+              Documentation
+            </a>
+          </div>
+        </section>
+
+        <section className="grid gap-4">
+          <FeatureCard
+            icon={<PlayCircle className="h-5 w-5" />}
+            title="Playground first"
+            description="Run the exact prompt you are editing, with real template input, before you create a version."
+          />
+          <FeatureCard
+            icon={<GitBranch className="h-5 w-5" />}
+            title="Readable history"
+            description="Compare versions, restore safely, and keep commit messages focused on actual prompt changes."
+          />
+          <FeatureCard
+            icon={<Beaker className="h-5 w-5" />}
+            title="Eval signal"
+            description="Track pass rate and score against the versions that matter instead of guessing from raw output."
+          />
+        </section>
       </div>
-
-      {/* Features Outline */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mt-24 w-full animate-in fade-in duration-1000 delay-300">
-        <FeatureOutline 
-          icon={<GitBranch className="w-5 h-5" />}
-          title="Git-Level Versioning"
-        />
-        <FeatureOutline 
-          icon={<Activity className="w-5 h-5" />}
-          title="Parallel Testing"
-        />
-        <FeatureOutline 
-          icon={<Cpu className="w-5 h-5" />}
-          title="AI-Powered Judge"
-        />
-      </div>
-
     </div>
   );
 };
 
-const FeatureOutline = ({ icon, title }) => (
-  <div className="vercel-card p-6 flex flex-col items-start gap-4">
-    <div className="text-[#ededed]">
-      {icon}
+function FeatureCard({ icon, title, description }) {
+  return (
+    <div className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-6">
+      <div className="mb-4 inline-flex rounded-md border border-[#273041] bg-[#151b27] p-2 text-[#c8cfde]">
+        {icon}
+      </div>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-7 text-[#8f97ab]">{description}</p>
     </div>
-    <h3 className="text-sm font-semibold text-[#ededed]">{title}</h3>
-  </div>
-);
+  );
+}
 
 export default LandingPage;

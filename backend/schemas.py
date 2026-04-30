@@ -63,6 +63,15 @@ class TestCaseSchema(TestCaseBase):
     class Config:
         orm_mode = True
 
+class PromptListItemSchema(PromptBase):
+    id: int
+    created_at: datetime
+    versions: List[PromptVersionSchema] = []
+    test_cases: List[TestCaseSchema] = []
+
+    class Config:
+        orm_mode = True
+
 # Test Run Schemas
 class TestRunSchema(BaseModel):
     id: int
@@ -101,5 +110,5 @@ class PromptAnalytics(BaseModel):
 
 # Export Schema
 class ExportSchema(BaseModel):
-    prompt: PromptSchema
+    prompt: PromptListItemSchema
     test_cases: List[TestCaseSchema]

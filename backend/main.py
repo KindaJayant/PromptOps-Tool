@@ -33,18 +33,18 @@ def create_prompt(prompt: schemas.PromptCreate, db: Session = Depends(get_db)):
     db.refresh(db_prompt)
     return db_prompt
 
-@app.get("/prompts", response_model=List[schemas.PromptSchema])
+@app.get("/prompts", response_model=List[schemas.PromptListItemSchema])
 def list_prompts(db: Session = Depends(get_db)):
     return db.query(models.Prompt).all()
 
-@app.get("/prompts/{prompt_id}", response_model=schemas.PromptSchema)
+@app.get("/prompts/{prompt_id}", response_model=schemas.PromptListItemSchema)
 def get_prompt(prompt_id: int, db: Session = Depends(get_db)):
     db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
     if not db_prompt:
         raise HTTPException(status_code=404, detail="Prompt not found")
     return db_prompt
 
-@app.put("/prompts/{prompt_id}", response_model=schemas.PromptSchema)
+@app.put("/prompts/{prompt_id}", response_model=schemas.PromptListItemSchema)
 def update_prompt(prompt_id: int, prompt_update: schemas.PromptCreate, db: Session = Depends(get_db)):
     db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
     if not db_prompt:
