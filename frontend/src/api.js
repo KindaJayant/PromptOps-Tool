@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export const api = {
   // Prompts
@@ -26,6 +26,11 @@ export const api = {
     body: JSON.stringify(data)
   }).then(r => r.json()),
   getVersion: (id) => fetch(`${API_BASE_URL}/versions/${id}`).then(r => r.json()),
+  runPlayground: (promptId, data) => fetch(`${API_BASE_URL}/prompts/${promptId}/playground-run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(r => r.json()),
   updateTag: (versionId, tag) => fetch(`${API_BASE_URL}/versions/${versionId}/tag`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,4 +56,7 @@ export const api = {
     method: 'POST'
   }).then(r => r.json()),
   listTestRuns: (versionId) => fetch(`${API_BASE_URL}/versions/${versionId}/test-runs`).then(r => r.json()),
+
+  // Analytics
+  getAnalytics: (promptId) => fetch(`${API_BASE_URL}/prompts/${promptId}/analytics`).then(r => r.json()),
 };

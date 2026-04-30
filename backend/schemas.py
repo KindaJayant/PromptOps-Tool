@@ -37,6 +37,16 @@ class VersionCreate(BaseModel):
 class TagUpdate(BaseModel):
     tag: str
 
+
+class PlaygroundRunRequest(BaseModel):
+    content: str
+    input_data: Optional[str] = ""
+
+
+class PlaygroundRunResponse(BaseModel):
+    rendered_prompt: str
+    actual_output: str
+
 # Test Case Schemas
 class TestCaseBase(BaseModel):
     input: str

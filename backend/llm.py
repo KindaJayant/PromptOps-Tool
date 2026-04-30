@@ -1,6 +1,7 @@
-import httpx
-import os
 import json
+import os
+
+import httpx
 from dotenv import load_dotenv
 from jinja2 import Template
 
@@ -9,19 +10,20 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free")
 
-async def call_llm(template_content: str, input_data: str):
+def render_template(template_content: str, input_data: str):
     # Try to parse input_data as JSON for Jinja2 context
     try:
         context = json.loads(input_data)
-    except:
+    except Exception:
         context = {"input": input_data}
-    
-    # Render the template
-    try:
-        rendered_prompt = Template(template_content).render(**context)
-    except Exception as e:
-        rendered_prompt = f"Template rendering failed: {str(e)}\n\nOriginal Content: {template_content}"
 
+    try:
+        return Template(template_content).render(**context)
+    except Exception as e:
+        return f"Template rendering failed: {str(e)}\n\nOriginal Content: {template_content}"
+
+async def call_llm(template_content: str, input_data: str):
+    rendered_prompt = render_template(template_content, input_data)
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -51,7 +53,6 @@ async def run_judge(expected_output: str, actual_output: str):
     
     # Try to parse JSON from the response
     try:
-        # Arcee might sometimes include markdown blocks, so let's clean it
         clean_text = response_text.strip()
         if "```json" in clean_text:
             clean_text = clean_text.split("```json")[1].split("```")[0].strip()

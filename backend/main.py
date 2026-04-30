@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -102,6 +102,24 @@ def update_tag(version_id: int, tag_data: schemas.TagUpdate, db: Session = Depen
     db.commit()
     db.refresh(db_version)
     return db_version
+
+
+@app.post("/prompts/{prompt_id}/playground-run", response_model=schemas.PlaygroundRunResponse)
+async def playground_run(
+    prompt_id: int,
+    payload: schemas.PlaygroundRunRequest,
+    db: Session = Depends(get_db),
+):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    rendered_prompt = llm.render_template(payload.content, payload.input_data or "")
+    actual_output = await llm.call_llm(payload.content, payload.input_data or "")
+    return {
+        "rendered_prompt": rendered_prompt,
+        "actual_output": actual_output,
+    }
 
 @app.post("/versions/{version_id}/rollback", response_model=schemas.PromptVersionSchema)
 def rollback_version(version_id: int, db: Session = Depends(get_db)):
