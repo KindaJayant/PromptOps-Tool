@@ -37,6 +37,16 @@ class VersionCreate(BaseModel):
 class TagUpdate(BaseModel):
     tag: str
 
+
+class PlaygroundRunRequest(BaseModel):
+    content: str
+    input_data: Optional[str] = ""
+
+
+class PlaygroundRunResponse(BaseModel):
+    rendered_prompt: str
+    actual_output: str
+
 # Test Case Schemas
 class TestCaseBase(BaseModel):
     input: str
@@ -49,6 +59,15 @@ class TestCaseSchema(TestCaseBase):
     id: int
     prompt_id: int
     created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class PromptListItemSchema(PromptBase):
+    id: int
+    created_at: datetime
+    versions: List[PromptVersionSchema] = []
+    test_cases: List[TestCaseSchema] = []
 
     class Config:
         orm_mode = True
@@ -91,5 +110,5 @@ class PromptAnalytics(BaseModel):
 
 # Export Schema
 class ExportSchema(BaseModel):
-    prompt: PromptSchema
+    prompt: PromptListItemSchema
     test_cases: List[TestCaseSchema]

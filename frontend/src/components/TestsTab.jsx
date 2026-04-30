@@ -1,231 +1,311 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Plus, Beaker, CheckCircle, XCircle, Info, ChevronDown } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Beaker, CheckCircle, ChevronDown, Play, Plus, XCircle } from 'lucide-react';
 import { api } from '../api';
 
-const TestsTab = ({ prompt }) => {
+const TestsTab = ({ prompt, analytics }) => {
   const [testCases, setTestCases] = useState([]);
   const [newTestCase, setNewTestCase] = useState({ input: '', expected_output: '' });
   const [selectedVersionId, setSelectedVersionId] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (prompt) {
-      loadTestCases();
-      if (prompt.versions && prompt.versions.length > 0) {
-        const sorted = [...prompt.versions].sort((a, b) => b.version_number - a.version_number);
-        setSelectedVersionId(sorted[0].id);
-      }
+    if (!prompt) return;
+
+    const load = async () => {
+      const data = await api.listTestCases(prompt.id);
+      setTestCases(data);
+    };
+
+    load();
+
+    if (prompt.versions?.length) {
+      const sorted = [...prompt.versions].sort((a, b) => b.version_number - a.version_number);
+      setSelectedVersionId(String(sorted[0].id));
+    } else {
+      setSelectedVersionId('');
     }
   }, [prompt]);
 
-  const loadTestCases = async () => {
-    const data = await api.listTestCases(prompt.id);
-    setTestCases(data);
-  };
+  useEffect(() => {
+    if (!selectedVersionId) {
+      setTestResults(null);
+      return;
+    }
 
-  const handleAddTestCase = async (e) => {
-    e.preventDefault();
+    const loadRuns = async () => {
+      try {
+        const runs = await api.listTestRuns(selectedVersionId);
+        if (!runs.length) {
+          setTestResults(null);
+          return;
+        }
+
+        const latestByCase = new Map();
+        [...runs]
+          .sort((a, b) => new Date(b.ran_at) - new Date(a.ran_at))
+          .forEach((run) => {
+            if (!latestByCase.has(run.test_case_id)) {
+              latestByCase.set(run.test_case_id, run);
+            }
+          });
+
+        const dedupedResults = Array.from(latestByCase.values());
+        const passRate = dedupedResults.length
+          ? dedupedResults.filter((run) => run.passed).length / dedupedResults.length
+          : 0;
+
+        setTestResults({ results: dedupedResults, pass_rate: passRate });
+      } catch (runError) {
+        setError(runError.message);
+      }
+    };
+
+    loadRuns();
+  }, [selectedVersionId]);
+
+  const handleAddTestCase = async (event) => {
+    event.preventDefault();
     if (!newTestCase.input || !newTestCase.expected_output) return;
+
     const created = await api.createTestCase(prompt.id, newTestCase);
-    setTestCases([...testCases, created]);
+    setTestCases((current) => [...current, created]);
     setNewTestCase({ input: '', expected_output: '' });
     setIsAdding(false);
   };
 
   const handleRunTests = async () => {
     if (!selectedVersionId) return;
+
     setIsRunning(true);
+    setError('');
+
     try {
       const data = await api.runTests(selectedVersionId);
       setTestResults(data);
+    } catch (runError) {
+      setError(runError.message);
     } finally {
       setIsRunning(false);
     }
   };
 
+  const selectedStats = analytics?.version_stats?.find(
+    (stat) => String(stat.version_id) === String(selectedVersionId),
+  );
+
+  const resultMap = useMemo(
+    () => new Map((testResults?.results || []).map((result) => [result.test_case_id, result])),
+    [testResults],
+  );
+
   if (!prompt) return null;
 
   return (
-    <div className="max-w-5xl mx-auto py-6 px-4 space-y-8 pb-20">
-      {/* Header & Run Controls */}
-      <div className="flex justify-between items-center bg-slate-800/50 border border-slate-700/50 p-6 rounded-2xl backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="bg-indigo-500/20 p-3 rounded-xl">
-            <Beaker className="w-6 h-6 text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">Test Suite</h2>
-            <p className="text-slate-400 text-sm">Validate your prompt against edge cases</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors pointer-events-none" />
-            <select
-              value={selectedVersionId}
-              onChange={(e) => setSelectedVersionId(e.target.value)}
-              className="appearance-none bg-slate-900 border border-slate-700 rounded-lg pl-4 pr-10 py-2.5 text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all min-w-[140px]"
-            >
-              {[...prompt.versions].sort((a,b) => b.version_number - a.version_number).map(v => (
-                <option key={v.id} value={v.id}>Version v{v.version_number}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={handleRunTests}
-            disabled={isRunning || testCases.length === 0}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-500/20 font-bold"
-          >
-            <Play className={`w-4 h-4 ${isRunning ? 'animate-pulse' : ''}`} />
-            {isRunning ? 'Running...' : 'Run All Tests'}
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Stat */}
-      {testResults && (
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-                <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-1">Pass Rate</p>
-                    <p className={`text-4xl font-black ${testResults.pass_rate >= 0.7 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {(testResults.pass_rate * 100).toFixed(0)}%
-                    </p>
-                </div>
-                <div className="h-12 w-px bg-slate-700"></div>
-                <div>
-                    <p className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-1">Results</p>
-                    <p className="text-xl font-bold text-white">
-                        {testResults.results.filter(r => r.passed).length} / {testResults.results.length} Passed
-                    </p>
-                </div>
+    <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+      <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-md border border-[#232838] bg-[#141925] p-2.5 text-[#c8cfde]">
+              <Beaker className="h-5 w-5" />
             </div>
-            <div className="flex-1 max-w-xs mx-12">
-                <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-                    <div 
-                        className={`h-full transition-all duration-1000 ${testResults.pass_rate >= 0.7 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                        style={{ width: `${testResults.pass_rate * 100}%` }}
-                    />
-                </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Eval suite</h2>
+              <p className="text-sm text-[#8f97ab]">Run real test cases against a specific version.</p>
             </div>
-        </div>
-      )}
+          </div>
 
-      {/* Add Test Case Form */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-            <h3 className="text-lg font-bold text-white px-2">Test Cases ({testCases.length})</h3>
-            <button 
-                onClick={() => setIsAdding(!isAdding)}
-                className="text-sm font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f97ab]" />
+              <select
+                value={selectedVersionId}
+                onChange={(event) => setSelectedVersionId(event.target.value)}
+                className="appearance-none rounded-md border border-[#273041] bg-[#0d1118] py-2 pl-3 pr-10 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+              >
+                {[...prompt.versions].sort((a, b) => b.version_number - a.version_number).map((version) => (
+                  <option key={version.id} value={version.id}>
+                    Version v{version.version_number}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleRunTests}
+              disabled={isRunning || testCases.length === 0}
+              className="inline-flex items-center gap-2 rounded-md bg-[#f3f4f6] px-4 py-2.5 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-                <Plus className="w-4 h-4" />
-                Add Test Case
+              {isRunning ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0d1016]/20 border-t-[#0d1016]" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isRunning ? 'Running...' : 'Run all tests'}
             </button>
+
+            <button
+              onClick={() => setIsAdding((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-md border border-[#273041] bg-[#141925] px-4 py-2.5 text-sm text-[#c8cfde] transition-colors hover:border-[#3b465d] hover:text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Add test case
+            </button>
+          </div>
         </div>
 
-        {isAdding && (
-          <div className="bg-slate-800 border border-indigo-500/30 rounded-2xl p-6 shadow-2xl shadow-indigo-500/5 animate-in fade-in slide-in-from-top-4 duration-300">
-            <form onSubmit={handleAddTestCase} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Input (User Message)</label>
-                  <textarea
-                    required
-                    value={newTestCase.input}
-                    onChange={(e) => setNewTestCase({ ...newTestCase, input: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white text-sm h-32 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
-                    placeholder="e.g. Write a summary of a 500-word article about space."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expected Output</label>
-                  <textarea
-                    required
-                    value={newTestCase.expected_output}
-                    onChange={(e) => setNewTestCase({ ...newTestCase, expected_output: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white text-sm h-32 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
-                    placeholder="e.g. A concise 3-sentence summary highlighting key points."
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAdding(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-indigo-500/20"
-                >
-                  Save Test Case
-                </button>
-              </div>
-            </form>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <MetricCard
+            label="Test cases"
+            value={String(testCases.length)}
+            helper="Stored against this prompt"
+          />
+          <MetricCard
+            label="Latest pass rate"
+            value={selectedStats?.total_runs ? `${Math.round(selectedStats.pass_rate * 100)}%` : 'No runs'}
+            helper={selectedStats?.total_runs ? `${selectedStats.total_runs} recorded results` : 'Run the suite to capture signal'}
+          />
+          <MetricCard
+            label="Average score"
+            value={selectedStats?.total_runs ? `${Math.round(selectedStats.avg_score * 100)}%` : 'No score'}
+            helper="Based on judge scoring"
+          />
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-xl border border-[#4f2a2a] bg-[#1a1010] px-4 py-3 text-sm text-[#ffb3ad]">
+            {error}
           </div>
         )}
+      </section>
 
-        {/* Test Case List / Results */}
-        <div className="space-y-4">
-          {testCases.map((tc) => {
-            const result = testResults?.results.find(r => r.test_case_id === tc.id);
+      {isAdding && (
+        <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
+          <h3 className="text-lg font-semibold text-white">Add a test case</h3>
+          <p className="mt-1 text-sm text-[#8f97ab]">Use real inputs and the output you want the prompt to match.</p>
+
+          <form onSubmit={handleAddTestCase} className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Input</label>
+              <textarea
+                required
+                value={newTestCase.input}
+                onChange={(event) => setNewTestCase({ ...newTestCase, input: event.target.value })}
+                className="h-36 w-full resize-none rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Expected output</label>
+              <textarea
+                required
+                value={newTestCase.expected_output}
+                onChange={(event) => setNewTestCase({ ...newTestCase, expected_output: event.target.value })}
+                className="h-36 w-full resize-none rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 lg:col-span-2">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="rounded-md border border-[#273041] px-4 py-2 text-sm text-[#c8cfde] transition-colors hover:border-[#3b465d] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-md bg-[#f3f4f6] px-4 py-2 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white"
+              >
+                Save test case
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      <section className="space-y-4">
+        {testCases.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#273041] bg-[#10141c] px-5 py-12 text-center text-sm text-[#8f97ab]">
+            No test cases yet. Add the first one and then run the suite against a saved version.
+          </div>
+        ) : (
+          testCases.map((testCase) => {
+            const result = resultMap.get(testCase.id);
+
             return (
-              <div key={tc.id} className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden group hover:border-slate-600 transition-all">
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded">ID: {tc.id}</div>
-                      {result && (
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                          result.passed ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}>
-                          {result.passed ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                          {result.passed ? 'PASSED' : 'FAILED'} — Score: {(result.score * 100).toFixed(0)}%
-                        </div>
-                      )}
-                    </div>
+              <article
+                key={testCase.id}
+                className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5"
+              >
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="rounded-full border border-[#273041] bg-[#141925] px-3 py-1 text-xs text-[#c8cfde]">
+                      Case #{testCase.id}
+                    </span>
+                    {result ? (
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                          result.passed
+                            ? 'border-[#23503a] bg-[#112219] text-[#b7f5c9]'
+                            : 'border-[#5c2b2b] bg-[#211111] text-[#ffb3ad]'
+                        }`}
+                      >
+                        {result.passed ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                        {result.passed ? 'Passed' : 'Failed'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#8f97ab]">No result for this version yet</span>
+                    )}
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-slate-600">Input</h4>
-                      <div className="bg-slate-900/50 p-4 rounded-xl text-sm text-slate-300 min-h-[80px] border border-slate-800/50 italic">"{tc.input}"</div>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-slate-600">Expected Output</h4>
-                      <div className="bg-slate-900/50 p-4 rounded-xl text-sm text-slate-300 min-h-[80px] border border-slate-800/50 italic">"{tc.expected_output}"</div>
-                    </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <TextBlock label="Input" value={testCase.input} />
+                    <TextBlock label="Expected output" value={testCase.expected_output} />
                   </div>
 
                   {result && (
-                    <div className="mt-6 pt-6 border-t border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                      <div className="space-y-2">
-                        <h4 className="text-[10px] uppercase tracking-widest font-black text-indigo-400">Actual Output</h4>
-                        <div className="bg-slate-900 p-4 rounded-xl text-sm text-white font-mono leading-relaxed border border-slate-700/30">{result.actual_output}</div>
-                      </div>
-                      <div className="bg-slate-900/80 rounded-xl p-4 flex gap-3 border border-slate-700/50">
-                        <Info className="w-5 h-5 text-indigo-400 shrink-0" />
-                        <div>
-                          <h4 className="text-[10px] uppercase tracking-widest font-black text-slate-500 mb-1">Judge Reasoning</h4>
-                          <p className="text-xs text-slate-400 leading-relaxed">{result.reasoning}</p>
+                    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+                      <TextBlock label="Actual output" value={result.actual_output} />
+                      <div className="rounded-xl border border-[#273041] bg-[#0d1118] p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">Judge result</div>
+                        <div className="mt-3 text-2xl font-semibold text-white">
+                          {Math.round(result.score * 100)}%
                         </div>
+                        <p className="mt-3 text-sm leading-7 text-[#8f97ab]">{result.reasoning}</p>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
+              </article>
             );
-          })}
-        </div>
-      </div>
+          })
+        )}
+      </section>
     </div>
   );
 };
+
+function MetricCard({ label, value, helper }) {
+  return (
+    <div className="rounded-xl border border-[#273041] bg-[#0d1118] p-4">
+      <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">{label}</div>
+      <div className="mt-3 text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-sm text-[#8f97ab]">{helper}</div>
+    </div>
+  );
+}
+
+function TextBlock({ label, value }) {
+  return (
+    <div>
+      <div className="mb-2 text-xs uppercase tracking-[0.18em] text-[#6d768d]">{label}</div>
+      <div className="rounded-xl border border-[#273041] bg-[#0d1118] px-4 py-3 text-sm leading-7 text-[#edf1f7]">
+        <pre className="whitespace-pre-wrap break-words font-sans">{value}</pre>
+      </div>
+    </div>
+  );
+}
 
 export default TestsTab;
