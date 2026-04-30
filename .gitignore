@@ -26,3 +26,6 @@ frontend/dist/
 .idea/
 *.swp
 *.swo
+
+.vercel
+.env*.local
