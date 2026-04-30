@@ -89,7 +89,7 @@ function App() {
   const promptTestCount = selectedPrompt?.test_cases?.length || 0;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0b0d12] text-[#f3f4f6] font-sans selection:bg-[#25304a]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-deep)] text-[var(--text-main)] selection:bg-[rgba(255,140,50,0.2)]">
       <Sidebar
         onSelectPrompt={(prompt) => {
           setSelectedPrompt(prompt);
@@ -100,28 +100,28 @@ function App() {
         refreshTrigger={sidebarRefresh}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden bg-[#0f1218]">
+      <main className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-deep)]">
         {selectedPrompt ? (
           <>
-            <header className="border-b border-[#1d2330] bg-[#0f1218]/95 px-6 py-5 backdrop-blur">
+            <header className="border-b border-[var(--line)] bg-[rgba(15,16,20,0.96)] backdrop-blur">
               <div className="flex flex-col gap-5">
-                <div className="flex items-start justify-between gap-6">
+                <div className="flex items-start justify-between gap-6 px-6 py-4">
                   <div className="min-w-0">
-                    <div className="mb-2 flex items-center gap-2">
+                    <div className="mb-2 flex items-center gap-2 mono-ui">
                       <button
                         onClick={() => setSelectedPrompt(null)}
-                        className="rounded-md border border-[#232838] bg-[#121722] p-1.5 text-[#8f97ab] transition-colors hover:border-[#30384d] hover:text-[#f3f4f6]"
+                        className="outline-button p-1.5 text-[var(--text-muted)]"
                       >
                         <Home className="h-4 w-4" />
                       </button>
-                      <span className="rounded-full border border-[#2d3344] bg-[#171c28] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#8f97ab]">
+                      <span className="label-micro">
                         Prompt Workspace
                       </span>
                     </div>
-                    <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
+                    <h1 className="thin-display truncate text-[42px] leading-none text-[var(--text-main)]">
                       {selectedPrompt.name}
                     </h1>
-                    <p className="mt-1 max-w-3xl text-sm text-[#8f97ab]">
+                    <p className="mono-ui mt-3 max-w-3xl text-[11px] leading-7 text-[var(--text-dim)]">
                       {selectedPrompt.description || 'Version your prompt, run it live, and watch regressions before you ship.'}
                     </p>
                   </div>
@@ -129,7 +129,7 @@ function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={refreshPrompt}
-                      className="rounded-md border border-[#232838] bg-[#121722] px-3 py-2 text-sm text-[#c8cfde] transition-colors hover:border-[#30384d] hover:text-white"
+                      className="outline-button mono-ui px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
                     >
                       <span className="flex items-center gap-2">
                         <RotateCcw className="h-4 w-4" />
@@ -138,20 +138,20 @@ function App() {
                     </button>
                     <button
                       onClick={handleEditOpen}
-                      className="rounded-md border border-[#232838] bg-[#121722] p-2 text-[#8f97ab] transition-colors hover:border-[#30384d] hover:text-white"
+                      className="outline-button p-2 text-[var(--text-muted)]"
                     >
                       <Settings2 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={handleDeletePrompt}
-                      className="rounded-md border border-[#3a2323] bg-[#1a1111] px-3 py-2 text-sm text-[#ff8f87] transition-colors hover:border-[#5c2b2b] hover:text-[#ffb3ad]"
+                      className="border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-3 py-2 mono-ui text-[10px] uppercase tracking-[0.12em] text-[#ffb3ad] transition-colors hover:bg-[rgba(255,111,97,0.14)]"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 px-6">
                   <StatPill
                     icon={<FileCode2 className="h-3.5 w-3.5" />}
                     label={`${promptVersionCount} version${promptVersionCount === 1 ? '' : 's'}`}
@@ -170,7 +170,7 @@ function App() {
                   />
                 </div>
 
-                <nav className="flex gap-2">
+                <nav className="flex gap-1 px-6">
                   {[
                     { id: 'editor', label: 'Playground' },
                     { id: 'history', label: 'History' },
@@ -179,10 +179,10 @@ function App() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`rounded-md px-3 py-2 text-sm transition-colors ${
+                      className={`mono-ui border-b-2 px-3 py-3 text-[10px] uppercase tracking-[0.16em] transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-[#f3f4f6] text-[#0d1016]'
-                          : 'bg-[#141925] text-[#8f97ab] hover:bg-[#181e2b] hover:text-white'
+                          ? 'border-b-[var(--accent)] text-[var(--text-main)]'
+                          : 'border-b-transparent text-[var(--text-muted)] hover:text-[var(--text-dim)]'
                       }`}
                     >
                       {tab.label}
@@ -235,41 +235,42 @@ function App() {
 
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#242b3a] bg-[#11151d] p-6 shadow-2xl">
-            <h2 className="mb-1 text-xl font-semibold text-white">Edit prompt details</h2>
-            <p className="mb-6 text-sm text-[#8f97ab]">
+          <div className="panel-shell w-full max-w-md bg-[#11151d] p-6 shadow-2xl">
+            <div className="label-micro accent-label mb-3">Edit prompt</div>
+            <h2 className="font-[var(--sans)] text-[30px] font-medium tracking-[-0.04em] text-[var(--text-main)]">Edit prompt details</h2>
+            <p className="mono-ui mb-6 mt-2 text-[10px] leading-6 text-[var(--text-dim)]">
               Keep metadata tidy so the workspace reads cleanly.
             </p>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[#c8cfde]">Name</label>
+                <label className="label-micro mb-2 block">Name</label>
                 <input
                   type="text"
                   required
                   value={editPromptData.name}
                   onChange={(event) => setEditPromptData({ ...editPromptData, name: event.target.value })}
-                  className="w-full rounded-md border border-[#273041] bg-[#0d1118] px-3 py-2 text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+                  className="w-full border border-[var(--line-strong)] bg-[#0d1118] px-3 py-2.5 mono-ui text-[11px] text-[var(--text-main)] outline-none focus:border-[rgba(255,140,50,0.4)]"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[#c8cfde]">Description</label>
+                <label className="label-micro mb-2 block">Description</label>
                 <textarea
                   value={editPromptData.description}
                   onChange={(event) => setEditPromptData({ ...editPromptData, description: event.target.value })}
-                  className="h-24 w-full resize-none rounded-md border border-[#273041] bg-[#0d1118] px-3 py-2 text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+                  className="h-24 w-full resize-none border border-[var(--line-strong)] bg-[#0d1118] px-3 py-2.5 mono-ui text-[11px] text-[var(--text-main)] outline-none focus:border-[rgba(255,140,50,0.4)]"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-md border border-[#273041] bg-transparent px-4 py-2 text-sm text-[#c8cfde] transition-colors hover:border-[#3b465d] hover:text-white"
+                  className="outline-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-md bg-[#f3f4f6] px-4 py-2 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white"
+                  className="solid-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em]"
                 >
                   Save
                 </button>
@@ -284,8 +285,8 @@ function App() {
 
 function StatPill({ icon, label }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-[#273041] bg-[#141925] px-3 py-1.5 text-xs text-[#c8cfde]">
-      <span className="text-[#8f97ab]">{icon}</span>
+    <span className="mono-ui inline-flex items-center gap-2 border border-[var(--line)] bg-[var(--bg-panel)] px-3 py-1.5 text-[9px] uppercase tracking-[0.12em] text-[var(--text-dim)]">
+      <span className="text-[var(--text-muted)]">{icon}</span>
       {label}
     </span>
   );
