@@ -36,6 +36,7 @@ class VersionCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     tag: str
+    force: bool = False
 
 
 class PlaygroundRunRequest(BaseModel):
@@ -62,6 +63,13 @@ class TestCaseSchema(TestCaseBase):
 
     class Config:
         orm_mode = True
+
+class TestCaseImportRequest(BaseModel):
+    test_cases: List[TestCaseCreate]
+
+class TestCaseImportResponse(BaseModel):
+    imported_count: int
+    test_cases: List[TestCaseSchema]
 
 class PromptListItemSchema(PromptBase):
     id: int

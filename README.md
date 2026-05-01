@@ -15,7 +15,7 @@ The app is split into a React frontend and a FastAPI backend, but it is wired fo
 - Frontend: React, Vite, Tailwind CSS
 - Backend: FastAPI, SQLAlchemy
 - Database: SQLite locally, Postgres in production
-- LLM provider: OpenRouter via environment variables
+- LLM provider: Gemini via environment variables
 
 ## Local setup
 
@@ -52,8 +52,8 @@ See [D:\projects\prompt-ops-tool\backend\.env.example](D:\projects\prompt-ops-to
 - `DATABASE_URL`
   - local default: `sqlite:///./promptops.db`
   - production: use a hosted Postgres connection string
-- `OPENROUTER_API_KEY`
-- `OPENROUTER_MODEL`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (recommended: `gemini-2.5-flash-lite` for lower free-tier pressure)
 
 ### Frontend
 
@@ -69,7 +69,7 @@ This repo is prepared for a free deployment path using:
 
 1. Vercel for hosting
 2. Neon Postgres for the production database
-3. OpenRouter as the model gateway
+3. Gemini as the model provider
 
 ### Why this setup
 
@@ -93,8 +93,8 @@ Requests to `/api/*` are routed to FastAPI. The frontend uses `/api` automatical
 3. In Vercel, import the repo as a project.
 4. Add these environment variables in Vercel:
    - `DATABASE_URL`
-   - `OPENROUTER_API_KEY`
-   - `OPENROUTER_MODEL`
+   - `GEMINI_API_KEY`
+   - `GEMINI_MODEL`
 5. Deploy.
 
 ### Recommended Neon connection string
