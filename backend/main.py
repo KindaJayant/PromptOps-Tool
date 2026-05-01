@@ -10,6 +10,8 @@ import json
 import models, schemas, database, llm
 from database import engine, get_db
 
+PRODUCTION_PASS_RATE_DROP_THRESHOLD = 0.10
+
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -93,11 +95,69 @@ def get_version(version_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Version not found")
     return db_version
 
+
+def get_version_pass_rate(version: models.PromptVersion) -> Optional[float]:
+    runs = version.test_runs or []
+    if not runs:
+        return None
+    passed_count = sum(1 for run in runs if run.passed)
+    return passed_count / len(runs)
+
 @app.post("/versions/{version_id}/tag", response_model=schemas.PromptVersionSchema)
 def update_tag(version_id: int, tag_data: schemas.TagUpdate, db: Session = Depends(get_db)):
     db_version = db.query(models.PromptVersion).filter(models.PromptVersion.id == version_id).first()
     if not db_version:
         raise HTTPException(status_code=404, detail="Version not found")
+
+    if tag_data.tag == "production":
+        candidate_pass_rate = get_version_pass_rate(db_version)
+        if candidate_pass_rate is None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "production_eval_required",
+                    "message": "Run evals on this version before promoting it to production.",
+                },
+            )
+
+        baseline_version = (
+            db.query(models.PromptVersion)
+            .filter(
+                models.PromptVersion.prompt_id == db_version.prompt_id,
+                models.PromptVersion.tag == "production",
+                models.PromptVersion.id != db_version.id,
+            )
+            .order_by(models.PromptVersion.created_at.desc())
+            .first()
+        )
+
+        if baseline_version:
+            baseline_pass_rate = get_version_pass_rate(baseline_version)
+            if baseline_pass_rate is not None:
+                pass_rate_drop = baseline_pass_rate - candidate_pass_rate
+                if pass_rate_drop > PRODUCTION_PASS_RATE_DROP_THRESHOLD and not tag_data.force:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "promotion_guardrail_failed",
+                            "message": "This version is testing worse than the current production tag.",
+                            "candidate_pass_rate": candidate_pass_rate,
+                            "baseline_pass_rate": baseline_pass_rate,
+                            "drop": pass_rate_drop,
+                            "threshold": PRODUCTION_PASS_RATE_DROP_THRESHOLD,
+                        },
+                    )
+
+        (
+            db.query(models.PromptVersion)
+            .filter(
+                models.PromptVersion.prompt_id == db_version.prompt_id,
+                models.PromptVersion.tag == "production",
+                models.PromptVersion.id != db_version.id,
+            )
+            .update({models.PromptVersion.tag: None}, synchronize_session=False)
+        )
+
     db_version.tag = tag_data.tag
     db.commit()
     db.refresh(db_version)

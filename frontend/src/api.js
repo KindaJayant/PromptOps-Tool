@@ -6,13 +6,24 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
+    let detail = null;
     try {
       const payload = await response.json();
-      message = payload.detail || payload.message || message;
+      detail = payload.detail ?? payload.message ?? null;
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (detail?.message) {
+        message = detail.message;
+      } else if (payload.message) {
+        message = payload.message;
+      }
     } catch {
       // Ignore parsing failures on non-JSON error bodies.
     }
-    throw new Error(message);
+    const error = new Error(message);
+    error.detail = detail;
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
@@ -52,11 +63,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
-  updateTag: (versionId, tag) =>
+  updateTag: (versionId, tag, force = false) =>
     request(`/versions/${versionId}/tag`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag }),
+      body: JSON.stringify({ tag, force }),
     }),
   rollbackVersion: (versionId) =>
     request(`/versions/${versionId}/rollback`, {

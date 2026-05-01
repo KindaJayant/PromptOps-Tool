@@ -8,9 +8,40 @@ const HistoryTab = ({ prompt, analytics, onRollback, onSelectForDiff, selectedFo
   const [isTagging, setIsTagging] = useState(null);
 
   const handleTag = async (versionId, tagName) => {
-    await api.updateTag(versionId, tagName);
-    setIsTagging(null);
-    onRollback();
+    try {
+      await api.updateTag(versionId, tagName);
+      setIsTagging(null);
+      onRollback();
+    } catch (error) {
+      const detail = error.detail || {};
+
+      if (detail.code === 'production_eval_required') {
+        alert(detail.message || 'Run evals on this version before promoting it to production.');
+        return;
+      }
+
+      if (detail.code === 'promotion_guardrail_failed') {
+        const candidate = Math.round((detail.candidate_pass_rate || 0) * 100);
+        const baseline = Math.round((detail.baseline_pass_rate || 0) * 100);
+        const threshold = Math.round((detail.threshold || 0) * 100);
+        const shouldForce = confirm(
+          `${detail.message || 'This version is underperforming the current production tag.'}\n\n` +
+            `Candidate pass rate: ${candidate}%\n` +
+            `Current production: ${baseline}%\n` +
+            `Guard rail threshold: ${threshold} points\n\n` +
+            'Promote anyway?'
+        );
+
+        if (shouldForce) {
+          await api.updateTag(versionId, tagName, true);
+          setIsTagging(null);
+          onRollback();
+        }
+        return;
+      }
+
+      alert(error.message || 'Failed to update tag.');
+    }
   };
 
   const handleRollback = async (versionId) => {

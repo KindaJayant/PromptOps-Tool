@@ -36,6 +36,7 @@ class VersionCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     tag: str
+    force: bool = False
 
 
 class PlaygroundRunRequest(BaseModel):
