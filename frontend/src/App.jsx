@@ -235,7 +235,7 @@ function App() {
 
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="panel-shell w-full max-w-md bg-[#11151d] p-6 shadow-2xl">
+          <div className="modal-shell w-full max-w-md p-6">
             <div className="label-micro accent-label mb-3">Edit prompt</div>
             <h2 className="font-[var(--sans)] text-[30px] font-medium tracking-[-0.04em] text-[var(--text-main)]">Edit prompt details</h2>
             <p className="mono-ui mb-6 mt-2 text-[10px] leading-6 text-[var(--text-dim)]">

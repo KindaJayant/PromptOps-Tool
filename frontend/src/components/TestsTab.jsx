@@ -104,26 +104,26 @@ const TestsTab = ({ prompt, analytics }) => {
   if (!prompt) return null;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
-      <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-md border border-[#232838] bg-[#141925] p-2.5 text-[#c8cfde]">
-              <Beaker className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Eval suite</h2>
-              <p className="text-sm text-[#8f97ab]">Run real test cases against a specific version.</p>
-            </div>
+    <div className="mx-auto max-w-[1280px] space-y-6 px-6 py-6">
+      <section className="panel-shell bg-[#10131b] px-5 py-5">
+        <div className="label-micro accent-label">Eval suite</div>
+        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="font-[var(--sans)] text-[38px] font-medium tracking-[-0.05em] text-[var(--text-main)]">
+              Regression signal
+            </h2>
+            <p className="mono-ui mt-3 max-w-[720px] text-[10px] leading-7 text-[var(--text-dim)]">
+              Run real cases against a selected version and keep the score attached to the history you actually ship.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f97ab]" />
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
               <select
                 value={selectedVersionId}
                 onChange={(event) => setSelectedVersionId(event.target.value)}
-                className="appearance-none rounded-md border border-[#273041] bg-[#0d1118] py-2 pl-3 pr-10 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
+                className="border border-[var(--line-strong)] bg-[#0d1118] py-3 pl-3 pr-10 mono-ui text-[10px] uppercase tracking-[0.12em] text-[var(--text-main)] outline-none focus:border-[rgba(255,140,50,0.4)]"
               >
                 {[...prompt.versions].sort((a, b) => b.version_number - a.version_number).map((version) => (
                   <option key={version.id} value={version.id}>
@@ -136,7 +136,7 @@ const TestsTab = ({ prompt, analytics }) => {
             <button
               onClick={handleRunTests}
               disabled={isRunning || testCases.length === 0}
-              className="inline-flex items-center gap-2 rounded-md bg-[#f3f4f6] px-4 py-2.5 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="solid-button inline-flex items-center gap-2 px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isRunning ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0d1016]/20 border-t-[#0d1016]" />
@@ -148,7 +148,7 @@ const TestsTab = ({ prompt, analytics }) => {
 
             <button
               onClick={() => setIsAdding((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-md border border-[#273041] bg-[#141925] px-4 py-2.5 text-sm text-[#c8cfde] transition-colors hover:border-[#3b465d] hover:text-white"
+              className="outline-button inline-flex items-center gap-2 px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.14em]"
             >
               <Plus className="h-4 w-4" />
               Add test case
@@ -156,7 +156,7 @@ const TestsTab = ({ prompt, analytics }) => {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 panel-shell-soft grid grid-cols-1 gap-px overflow-hidden bg-[var(--line)] md:grid-cols-3">
           <MetricCard
             label="Test cases"
             value={String(testCases.length)}
@@ -175,48 +175,45 @@ const TestsTab = ({ prompt, analytics }) => {
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-[#4f2a2a] bg-[#1a1010] px-4 py-3 text-sm text-[#ffb3ad]">
+          <div className="mt-4 border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-4 py-3 mono-ui text-[10px] leading-6 text-[#ffb3ad]">
             {error}
           </div>
         )}
       </section>
 
       {isAdding && (
-        <section className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5">
-          <h3 className="text-lg font-semibold text-white">Add a test case</h3>
-          <p className="mt-1 text-sm text-[#8f97ab]">Use real inputs and the output you want the prompt to match.</p>
+        <section className="panel-shell bg-[#10131b] px-5 py-5">
+          <div className="label-micro accent-label">Create case</div>
+          <h3 className="mt-3 font-[var(--sans)] text-[30px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
+            Add a regression test
+          </h3>
+          <p className="mono-ui mt-3 text-[10px] leading-7 text-[var(--text-dim)]">
+            Use real inputs and the exact output behavior you want the prompt to preserve.
+          </p>
 
           <form onSubmit={handleAddTestCase} className="mt-5 grid gap-4 lg:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Input</label>
-              <textarea
-                required
-                value={newTestCase.input}
-                onChange={(event) => setNewTestCase({ ...newTestCase, input: event.target.value })}
-                className="h-36 w-full resize-none rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[#c8cfde]">Expected output</label>
-              <textarea
-                required
-                value={newTestCase.expected_output}
-                onChange={(event) => setNewTestCase({ ...newTestCase, expected_output: event.target.value })}
-                className="h-36 w-full resize-none rounded-xl border border-[#273041] bg-[#0d1118] px-3 py-3 text-sm text-[#f3f4f6] outline-none transition-colors focus:border-[#45506b]"
-              />
-            </div>
+            <Field
+              label="Input"
+              value={newTestCase.input}
+              onChange={(event) => setNewTestCase({ ...newTestCase, input: event.target.value })}
+            />
+            <Field
+              label="Expected output"
+              value={newTestCase.expected_output}
+              onChange={(event) => setNewTestCase({ ...newTestCase, expected_output: event.target.value })}
+            />
 
             <div className="flex justify-end gap-3 lg:col-span-2">
               <button
                 type="button"
                 onClick={() => setIsAdding(false)}
-                className="rounded-md border border-[#273041] px-4 py-2 text-sm text-[#c8cfde] transition-colors hover:border-[#3b465d] hover:text-white"
+                className="outline-button px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.12em]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded-md bg-[#f3f4f6] px-4 py-2 text-sm font-medium text-[#0d1016] transition-colors hover:bg-white"
+                className="solid-button px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.12em]"
               >
                 Save test case
               </button>
@@ -227,36 +224,35 @@ const TestsTab = ({ prompt, analytics }) => {
 
       <section className="space-y-4">
         {testCases.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#273041] bg-[#10141c] px-5 py-12 text-center text-sm text-[#8f97ab]">
-            No test cases yet. Add the first one and then run the suite against a saved version.
+          <div className="border border-dashed border-[var(--line)] bg-[#10131b] px-5 py-14 text-center mono-ui text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+            No test cases yet
           </div>
         ) : (
           testCases.map((testCase) => {
             const result = resultMap.get(testCase.id);
 
             return (
-              <article
-                key={testCase.id}
-                className="rounded-2xl border border-[#1c2230] bg-[#10141c] p-5"
-              >
+              <article key={testCase.id} className="panel-shell bg-[#10131b] px-5 py-5">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-[#273041] bg-[#141925] px-3 py-1 text-xs text-[#c8cfde]">
-                      Case #{testCase.id}
+                    <span className="inline-flex border border-[var(--line-strong)] bg-[#111621] px-3 py-1 mono-ui text-[9px] uppercase tracking-[0.12em] text-[var(--text-dim)]">
+                      Case {testCase.id}
                     </span>
                     {result ? (
                       <span
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                        className={`inline-flex items-center gap-2 border px-3 py-1 mono-ui text-[9px] uppercase tracking-[0.12em] ${
                           result.passed
-                            ? 'border-[#23503a] bg-[#112219] text-[#b7f5c9]'
-                            : 'border-[#5c2b2b] bg-[#211111] text-[#ffb3ad]'
+                            ? 'border-[rgba(69,195,127,0.2)] bg-[rgba(69,195,127,0.12)] text-[#b7f5c9]'
+                            : 'border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] text-[#ffb3ad]'
                         }`}
                       >
                         {result.passed ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                         {result.passed ? 'Passed' : 'Failed'}
                       </span>
                     ) : (
-                      <span className="text-xs text-[#8f97ab]">No result for this version yet</span>
+                      <span className="mono-ui text-[9px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                        No result for this version yet
+                      </span>
                     )}
                   </div>
 
@@ -268,12 +264,14 @@ const TestsTab = ({ prompt, analytics }) => {
                   {result && (
                     <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
                       <TextBlock label="Actual output" value={result.actual_output} />
-                      <div className="rounded-xl border border-[#273041] bg-[#0d1118] p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">Judge result</div>
-                        <div className="mt-3 text-2xl font-semibold text-white">
+                      <div className="border border-[var(--line)] bg-[#0f1219] px-4 py-4">
+                        <div className="label-micro">Judge result</div>
+                        <div className="mt-3 font-[var(--sans)] text-[34px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
                           {Math.round(result.score * 100)}%
                         </div>
-                        <p className="mt-3 text-sm leading-7 text-[#8f97ab]">{result.reasoning}</p>
+                        <p className="mono-ui mt-3 text-[10px] leading-7 text-[var(--text-dim)]">
+                          {result.reasoning}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -289,10 +287,26 @@ const TestsTab = ({ prompt, analytics }) => {
 
 function MetricCard({ label, value, helper }) {
   return (
-    <div className="rounded-xl border border-[#273041] bg-[#0d1118] p-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-[#6d768d]">{label}</div>
-      <div className="mt-3 text-2xl font-semibold text-white">{value}</div>
-      <div className="mt-2 text-sm text-[#8f97ab]">{helper}</div>
+    <div className="bg-[rgba(21,24,33,0.74)] px-4 py-4">
+      <div className="label-micro">{label}</div>
+      <div className="mt-3 font-[var(--sans)] text-[34px] font-medium tracking-[-0.05em] text-[var(--text-main)]">
+        {value}
+      </div>
+      <div className="mono-ui mt-2 text-[10px] leading-6 text-[var(--text-dim)]">{helper}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="label-micro mb-3 block">{label}</label>
+      <textarea
+        required
+        value={value}
+        onChange={onChange}
+        className="h-36 w-full resize-none border border-[var(--line-strong)] bg-[#0f1219] px-3 py-3 mono-ui text-[10px] leading-7 text-[var(--text-main)] outline-none focus:border-[rgba(255,140,50,0.4)]"
+      />
     </div>
   );
 }
@@ -300,9 +314,11 @@ function MetricCard({ label, value, helper }) {
 function TextBlock({ label, value }) {
   return (
     <div>
-      <div className="mb-2 text-xs uppercase tracking-[0.18em] text-[#6d768d]">{label}</div>
-      <div className="rounded-xl border border-[#273041] bg-[#0d1118] px-4 py-3 text-sm leading-7 text-[#edf1f7]">
-        <pre className="whitespace-pre-wrap break-words font-sans">{value}</pre>
+      <div className="label-micro mb-3">{label}</div>
+      <div className="border border-[var(--line)] bg-[#0f1219] px-4 py-3">
+        <pre className="whitespace-pre-wrap break-words mono-ui text-[10px] leading-7 text-[var(--text-main)]">
+          {value}
+        </pre>
       </div>
     </div>
   );
