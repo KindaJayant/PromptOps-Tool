@@ -63,6 +63,13 @@ class TestCaseSchema(TestCaseBase):
     class Config:
         orm_mode = True
 
+class TestCaseImportRequest(BaseModel):
+    test_cases: List[TestCaseCreate]
+
+class TestCaseImportResponse(BaseModel):
+    imported_count: int
+    test_cases: List[TestCaseSchema]
+
 class PromptListItemSchema(PromptBase):
     id: int
     created_at: datetime

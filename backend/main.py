@@ -186,6 +186,38 @@ def create_test_case(prompt_id: int, test_case: schemas.TestCaseCreate, db: Sess
     db.refresh(db_test_case)
     return db_test_case
 
+@app.post("/prompts/{prompt_id}/test-cases/import", response_model=schemas.TestCaseImportResponse)
+def import_test_cases(
+    prompt_id: int,
+    payload: schemas.TestCaseImportRequest,
+    db: Session = Depends(get_db),
+):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    if not payload.test_cases:
+        raise HTTPException(status_code=400, detail="No test cases provided")
+
+    imported_cases = []
+    for test_case in payload.test_cases:
+        db_test_case = models.TestCase(
+            prompt_id=prompt_id,
+            input=test_case.input,
+            expected_output=test_case.expected_output,
+        )
+        db.add(db_test_case)
+        imported_cases.append(db_test_case)
+
+    db.commit()
+    for test_case in imported_cases:
+        db.refresh(test_case)
+
+    return {
+        "imported_count": len(imported_cases),
+        "test_cases": imported_cases,
+    }
+
 @app.get("/prompts/{prompt_id}/test-cases", response_model=List[schemas.TestCaseSchema])
 def list_test_cases(prompt_id: int, db: Session = Depends(get_db)):
     return db.query(models.TestCase).filter(models.TestCase.prompt_id == prompt_id).all()

@@ -72,6 +72,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+  importTestCases: (promptId, testCases) =>
+    request(`/prompts/${promptId}/test-cases/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test_cases: testCases }),
+    }),
 
   runTests: (versionId) =>
     request(`/versions/${versionId}/run-tests`, {

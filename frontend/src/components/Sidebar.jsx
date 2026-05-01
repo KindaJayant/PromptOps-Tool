@@ -103,7 +103,7 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/72 p-4">
-          <div className="panel-shell w-full max-w-sm bg-[#11151d] p-6">
+          <div className="modal-shell w-full max-w-sm p-6">
             <div className="label-micro accent-label mb-3">Create prompt</div>
             <h2 className="font-[var(--sans)] text-[28px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
               Start a new workspace

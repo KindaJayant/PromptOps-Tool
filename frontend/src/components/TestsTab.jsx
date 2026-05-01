@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Beaker, CheckCircle, ChevronDown, Play, Plus, XCircle } from 'lucide-react';
+import { Beaker, CheckCircle, ChevronDown, Play, Plus, Upload, XCircle } from 'lucide-react';
 import { api } from '../api';
 
 const TestsTab = ({ prompt, analytics }) => {
@@ -9,7 +9,9 @@ const TestsTab = ({ prompt, analytics }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState('');
+  const [importText, setImportText] = useState('');
 
   useEffect(() => {
     if (!prompt) return;
@@ -92,6 +94,39 @@ const TestsTab = ({ prompt, analytics }) => {
     }
   };
 
+  const handleImportText = async () => {
+    try {
+      const parsed = parseImportText(importText);
+      if (!parsed.length) {
+        setError('No valid test cases found in import data.');
+        return;
+      }
+      const response = await api.importTestCases(prompt.id, parsed);
+      setTestCases((current) => [...current, ...response.test_cases]);
+      setImportText('');
+      setIsImporting(false);
+      setError('');
+    } catch (importError) {
+      setError(importError.message);
+    }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      setImportText(text);
+      setIsImporting(true);
+      setError('');
+    } catch {
+      setError('Could not read the selected file.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   const selectedStats = analytics?.version_stats?.find(
     (stat) => String(stat.version_id) === String(selectedVersionId),
   );
@@ -153,6 +188,11 @@ const TestsTab = ({ prompt, analytics }) => {
               <Plus className="h-4 w-4" />
               Add test case
             </button>
+            <label className="outline-button inline-flex cursor-pointer items-center gap-2 px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.14em]">
+              <Upload className="h-4 w-4" />
+              Import CSV / JSON
+              <input type="file" accept=".csv,.json,.txt" className="hidden" onChange={handleImportFile} />
+            </label>
           </div>
         </div>
 
@@ -222,6 +262,46 @@ const TestsTab = ({ prompt, analytics }) => {
         </section>
       )}
 
+      {isImporting && (
+        <section className="panel-shell bg-[#10131b] px-5 py-5">
+          <div className="label-micro accent-label">Bulk import</div>
+          <h3 className="mt-3 font-[var(--sans)] text-[30px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
+            Import regression cases
+          </h3>
+          <p className="mono-ui mt-3 text-[10px] leading-7 text-[var(--text-dim)]">
+            Paste a JSON array of objects with <span className="text-[var(--text-main)]">input</span> and <span className="text-[var(--text-main)]">expected_output</span>,
+            or CSV with those same column headers.
+          </p>
+
+          <textarea
+            value={importText}
+            onChange={(event) => setImportText(event.target.value)}
+            className="mt-5 h-52 w-full resize-none border border-[var(--line-strong)] bg-[#0f1219] px-3 py-3 mono-ui text-[10px] leading-7 text-[var(--text-main)] outline-none placeholder:text-[var(--text-muted)] focus:border-[rgba(255,140,50,0.4)]"
+            placeholder='[{"input":"...","expected_output":"..."}]'
+          />
+
+          <div className="mt-4 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsImporting(false);
+                setImportText('');
+              }}
+              className="outline-button px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.12em]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleImportText}
+              className="solid-button px-4 py-3 mono-ui text-[10px] uppercase tracking-[0.12em]"
+            >
+              Import cases
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-4">
         {testCases.length === 0 ? (
           <div className="border border-dashed border-[var(--line)] bg-[#10131b] px-5 py-14 text-center mono-ui text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
@@ -284,6 +364,74 @@ const TestsTab = ({ prompt, analytics }) => {
     </div>
   );
 };
+
+function parseImportText(rawText) {
+  const text = rawText.trim();
+  if (!text) return [];
+
+  if (text.startsWith('[')) {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) {
+      throw new Error('JSON import must be an array of test case objects.');
+    }
+    return parsed
+      .map((item) => ({
+        input: String(item.input ?? '').trim(),
+        expected_output: String(item.expected_output ?? item.expected ?? '').trim(),
+      }))
+      .filter((item) => item.input && item.expected_output);
+  }
+
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 2) {
+    throw new Error('CSV import needs a header row and at least one test case row.');
+  }
+
+  const headers = splitCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+  const inputIndex = headers.indexOf('input');
+  const expectedIndex = headers.indexOf('expected_output');
+
+  if (inputIndex === -1 || expectedIndex === -1) {
+    throw new Error('CSV import must include input and expected_output headers.');
+  }
+
+  return lines
+    .slice(1)
+    .map((line) => {
+      const columns = splitCsvLine(line);
+      return {
+        input: String(columns[inputIndex] ?? '').trim(),
+        expected_output: String(columns[expectedIndex] ?? '').trim(),
+      };
+    })
+    .filter((item) => item.input && item.expected_output);
+}
+
+function splitCsvLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"') {
+      if (inQuotes && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current);
+  return values;
+}
 
 function MetricCard({ label, value, helper }) {
   return (
