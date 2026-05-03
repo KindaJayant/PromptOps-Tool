@@ -10,14 +10,32 @@ import DiffView from './components/DiffView';
 import LandingPage from './components/LandingPage';
 
 function App() {
+  const [prompts, setPrompts] = useState([]);
+  const [isPromptsLoading, setIsPromptsLoading] = useState(true);
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [activeTab, setActiveTab] = useState('editor');
   const [diffSelection, setDiffSelection] = useState([]);
   const [showDiff, setShowDiff] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editPromptData, setEditPromptData] = useState({ name: '', description: '' });
-  const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [analytics, setAnalytics] = useState(null);
+
+  const loadPrompts = async () => {
+    setIsPromptsLoading(true);
+    try {
+      const data = await api.listPrompts();
+      const sortedPrompts = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setPrompts(sortedPrompts);
+      return sortedPrompts;
+    } finally {
+      setIsPromptsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrompts();
+  }, []);
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -31,6 +49,12 @@ function App() {
     loadAnalytics();
   }, [selectedPrompt]);
 
+  const handleSelectPrompt = (prompt) => {
+    setSelectedPrompt(prompt);
+    setActiveTab('editor');
+    setDiffSelection([]);
+  };
+
   const refreshPrompt = async () => {
     if (!selectedPrompt) return;
     const [updatedPrompt, updatedAnalytics] = await Promise.all([
@@ -38,6 +62,9 @@ function App() {
       api.getAnalytics(selectedPrompt.id),
     ]);
     setSelectedPrompt(updatedPrompt);
+    setPrompts((current) =>
+      current.map((prompt) => (prompt.id === updatedPrompt.id ? updatedPrompt : prompt)),
+    );
     setAnalytics(updatedAnalytics);
   };
 
@@ -54,8 +81,10 @@ function App() {
     if (!editPromptData.name) return;
     const updated = await api.updatePrompt(selectedPrompt.id, editPromptData);
     setSelectedPrompt(updated);
+    setPrompts((current) =>
+      current.map((prompt) => (prompt.id === updated.id ? updated : prompt)),
+    );
     setIsEditModalOpen(false);
-    setSidebarRefresh((value) => value + 1);
     const updatedAnalytics = await api.getAnalytics(updated.id);
     setAnalytics(updatedAnalytics);
   };
@@ -63,9 +92,26 @@ function App() {
   const handleDeletePrompt = async () => {
     if (!window.confirm(`Delete "${selectedPrompt.name}"? This cannot be undone.`)) return;
     await api.deletePrompt(selectedPrompt.id);
+    setPrompts((current) => current.filter((prompt) => prompt.id !== selectedPrompt.id));
     setSelectedPrompt(null);
     setAnalytics(null);
-    setSidebarRefresh((value) => value + 1);
+  };
+
+  const handlePromptCreated = (createdPrompt) => {
+    setPrompts((current) => [createdPrompt, ...current]);
+    setIsCreateModalOpen(false);
+    handleSelectPrompt(createdPrompt);
+  };
+
+  const handleOpenWorkspace = async () => {
+    if (prompts.length > 0) {
+      const latestPrompt = prompts[0];
+      const hydratedPrompt = await api.getPrompt(latestPrompt.id);
+      handleSelectPrompt(hydratedPrompt);
+      return;
+    }
+
+    setIsCreateModalOpen(true);
   };
 
   const handleSelectForDiff = (id) => {
@@ -91,13 +137,14 @@ function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-deep)] text-[var(--text-main)] selection:bg-[rgba(255,140,50,0.2)]">
       <Sidebar
-        onSelectPrompt={(prompt) => {
-          setSelectedPrompt(prompt);
-          setActiveTab('editor');
-          setDiffSelection([]);
-        }}
+        prompts={prompts}
+        isLoading={isPromptsLoading}
+        onSelectPrompt={handleSelectPrompt}
+        onPromptCreated={handlePromptCreated}
         selectedPromptId={selectedPrompt?.id}
-        refreshTrigger={sidebarRefresh}
+        isCreateModalOpen={isCreateModalOpen}
+        onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        onCloseCreateModal={() => setIsCreateModalOpen(false)}
       />
 
       <main className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-deep)]">
@@ -218,7 +265,13 @@ function App() {
             </div>
           </>
         ) : (
-          <LandingPage onGetStarted={() => setSidebarRefresh((value) => value + 1)} />
+          <LandingPage
+            prompts={prompts}
+            isLoading={isPromptsLoading}
+            onOpenWorkspace={handleOpenWorkspace}
+            onCreatePrompt={() => setIsCreateModalOpen(true)}
+            onSelectPrompt={handleSelectPrompt}
+          />
         )}
       </main>
 
