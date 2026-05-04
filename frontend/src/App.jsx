@@ -49,8 +49,12 @@ function App() {
     loadAnalytics();
   }, [selectedPrompt]);
 
-  const handleSelectPrompt = (prompt) => {
-    setSelectedPrompt(prompt);
+  const handleSelectPrompt = async (prompt) => {
+    const hydratedPrompt = await api.getPrompt(prompt.id);
+    setSelectedPrompt(hydratedPrompt);
+    setPrompts((current) =>
+      current.map((item) => (item.id === hydratedPrompt.id ? hydratedPrompt : item)),
+    );
     setActiveTab('editor');
     setDiffSelection([]);
   };
@@ -260,6 +264,7 @@ function App() {
                 <TestsTab
                   prompt={selectedPrompt}
                   analytics={analytics}
+                  onPromptChanged={refreshPrompt}
                 />
               )}
             </div>

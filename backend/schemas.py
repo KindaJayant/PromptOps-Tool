@@ -98,6 +98,26 @@ class TestRunResults(BaseModel):
     results: List[TestRunSchema]
     pass_rate: float
 
+
+class VersionCaseResultSchema(BaseModel):
+    version_id: int
+    version_number: int
+    score: Optional[float]
+    passed: bool
+    ran_at: datetime
+
+
+class TestCaseMatrixRow(BaseModel):
+    test_case_id: int
+    input: str
+    expected_output: str
+    versions: List[VersionCaseResultSchema]
+
+
+class TestCaseMatrixResponse(BaseModel):
+    prompt_id: int
+    rows: List[TestCaseMatrixRow]
+
 # Diff Schemas
 class DiffLine(BaseModel):
     type: str # "added", "removed", "unchanged"
