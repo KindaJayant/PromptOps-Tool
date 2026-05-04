@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Beaker, CheckCircle, ChevronDown, Play, Plus, Upload, XCircle } from 'lucide-react';
 import { api } from '../api';
 
-const TestsTab = ({ prompt, analytics }) => {
+const VERSION_WINDOW = 5;
+
+const TestsTab = ({ prompt, analytics, onPromptChanged }) => {
   const [testCases, setTestCases] = useState([]);
+  const [matrixRows, setMatrixRows] = useState([]);
   const [newTestCase, setNewTestCase] = useState({ input: '', expected_output: '' });
   const [selectedVersionId, setSelectedVersionId] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -17,8 +20,12 @@ const TestsTab = ({ prompt, analytics }) => {
     if (!prompt) return;
 
     const load = async () => {
-      const data = await api.listTestCases(prompt.id);
-      setTestCases(data);
+      const [cases, matrix] = await Promise.all([
+        api.listTestCases(prompt.id),
+        api.getTestCaseMatrix(prompt.id),
+      ]);
+      setTestCases(cases);
+      setMatrixRows(matrix.rows || []);
     };
 
     load();
@@ -76,6 +83,7 @@ const TestsTab = ({ prompt, analytics }) => {
     setTestCases((current) => [...current, created]);
     setNewTestCase({ input: '', expected_output: '' });
     setIsAdding(false);
+    await onPromptChanged?.();
   };
 
   const handleRunTests = async () => {
@@ -87,6 +95,7 @@ const TestsTab = ({ prompt, analytics }) => {
     try {
       const data = await api.runTests(selectedVersionId);
       setTestResults(data);
+      await onPromptChanged?.();
     } catch (runError) {
       setError(runError.message);
     } finally {
@@ -106,6 +115,7 @@ const TestsTab = ({ prompt, analytics }) => {
       setImportText('');
       setIsImporting(false);
       setError('');
+      await onPromptChanged?.();
     } catch (importError) {
       setError(importError.message);
     }
@@ -134,6 +144,22 @@ const TestsTab = ({ prompt, analytics }) => {
   const resultMap = useMemo(
     () => new Map((testResults?.results || []).map((result) => [result.test_case_id, result])),
     [testResults],
+  );
+
+  const matrixVersions = useMemo(() => {
+    const versions = [...(prompt?.versions || [])]
+      .sort((a, b) => b.version_number - a.version_number)
+      .slice(0, VERSION_WINDOW)
+      .sort((a, b) => a.version_number - b.version_number);
+
+    return versions;
+  }, [prompt]);
+
+  const matrixGridStyle = useMemo(
+    () => ({
+      gridTemplateColumns: `minmax(280px,1.2fr) repeat(${Math.max(matrixVersions.length, 1)}, minmax(112px,1fr))`,
+    }),
+    [matrixVersions.length],
   );
 
   if (!prompt) return null;
@@ -301,6 +327,98 @@ const TestsTab = ({ prompt, analytics }) => {
           </div>
         </section>
       )}
+
+      <section className="panel-shell overflow-hidden bg-[#10131b]">
+        <div className="border-b border-[var(--line)] px-5 py-5">
+          <div className="label-micro accent-label">Case drift</div>
+          <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h3 className="font-[var(--sans)] text-[30px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
+                How each case moves across versions
+              </h3>
+              <p className="mono-ui mt-3 max-w-[720px] text-[10px] leading-7 text-[var(--text-dim)]">
+                Read the last few saved versions side by side so regressions show up before they hit production.
+              </p>
+            </div>
+            <div className="mono-ui text-[10px] uppercase tracking-[0.12em] text-[var(--text-dim)]">
+              Showing the latest {matrixVersions.length} version{matrixVersions.length === 1 ? '' : 's'}
+            </div>
+          </div>
+        </div>
+
+        {matrixRows.length === 0 || matrixVersions.length === 0 ? (
+          <div className="px-5 py-14 text-center mono-ui text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+            Add tests and save versions to unlock comparison signal
+          </div>
+        ) : (
+          <div className="custom-scrollbar overflow-x-auto">
+            <div className="min-w-[860px]">
+              <div
+                className="grid border-b border-[var(--line)] bg-[#151821] px-5 py-3 mono-ui text-[9px] uppercase tracking-[0.16em] text-[var(--text-muted)]"
+                style={matrixGridStyle}
+              >
+                <div>Test case</div>
+                {matrixVersions.map((version) => (
+                  <div key={version.id} className="text-center">
+                    v{version.version_number}
+                  </div>
+                ))}
+              </div>
+
+              {matrixRows.map((row) => {
+                const byVersionId = new Map(row.versions.map((version) => [version.version_id, version]));
+
+                return (
+                  <div
+                    key={row.test_case_id}
+                    className="grid items-stretch border-b border-[var(--line)] px-5 py-4"
+                    style={matrixGridStyle}
+                  >
+                    <div className="pr-4">
+                      <div className="label-micro">Case {row.test_case_id}</div>
+                      <div className="mono-ui mt-3 line-clamp-3 text-[10px] leading-7 text-[var(--text-main)]">
+                        {row.input}
+                      </div>
+                    </div>
+
+                    {matrixVersions.map((version) => {
+                      const cell = byVersionId.get(version.id);
+                      return (
+                        <div key={version.id} className="flex items-center justify-center px-2">
+                          {cell ? (
+                            <div
+                              className={`w-full border px-3 py-3 text-center ${
+                                cell.passed
+                                  ? 'border-[rgba(69,195,127,0.2)] bg-[rgba(69,195,127,0.12)]'
+                                  : 'border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)]'
+                              }`}
+                            >
+                              <div
+                                className={`mono-ui text-[9px] uppercase tracking-[0.12em] ${
+                                  cell.passed ? 'text-[#b7f5c9]' : 'text-[#ffb3ad]'
+                                }`}
+                              >
+                                {cell.passed ? 'Pass' : 'Fail'}
+                              </div>
+                              <div className="mt-2 font-[var(--sans)] text-[24px] font-medium tracking-[-0.04em] text-[var(--text-main)]">
+                                {Math.round((cell.score || 0) * 100)}%
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full border border-dashed border-[var(--line)] px-3 py-5 text-center mono-ui text-[9px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                              No run
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="space-y-4">
         {testCases.length === 0 ? (

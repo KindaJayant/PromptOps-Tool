@@ -77,6 +77,7 @@ export const api = {
   getDiff: (v1, v2) => request(`/diff?v1=${v1}&v2=${v2}`),
 
   listTestCases: (promptId) => request(`/prompts/${promptId}/test-cases`),
+  getTestCaseMatrix: (promptId) => request(`/prompts/${promptId}/test-case-matrix`),
   createTestCase: (promptId, data) =>
     request(`/prompts/${promptId}/test-cases`, {
       method: 'POST',

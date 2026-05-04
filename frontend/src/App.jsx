@@ -10,14 +10,41 @@ import DiffView from './components/DiffView';
 import LandingPage from './components/LandingPage';
 
 function App() {
+  const [prompts, setPrompts] = useState([]);
+  const [isPromptsLoading, setIsPromptsLoading] = useState(true);
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
+  const [isRefreshingPrompt, setIsRefreshingPrompt] = useState(false);
+  const [isSavingPromptMeta, setIsSavingPromptMeta] = useState(false);
+  const [isDeletingPrompt, setIsDeletingPrompt] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [activeTab, setActiveTab] = useState('editor');
   const [diffSelection, setDiffSelection] = useState([]);
   const [showDiff, setShowDiff] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editPromptData, setEditPromptData] = useState({ name: '', description: '' });
-  const [sidebarRefresh, setSidebarRefresh] = useState(0);
   const [analytics, setAnalytics] = useState(null);
+  const [appError, setAppError] = useState('');
+
+  const loadPrompts = async () => {
+    setIsPromptsLoading(true);
+    setAppError('');
+    try {
+      const data = await api.listPrompts();
+      const sortedPrompts = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setPrompts(sortedPrompts);
+      return sortedPrompts;
+    } catch (error) {
+      setAppError(error.message || 'Could not load prompt workspaces.');
+      return [];
+    } finally {
+      setIsPromptsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPrompts();
+  }, []);
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -31,14 +58,43 @@ function App() {
     loadAnalytics();
   }, [selectedPrompt]);
 
+  const handleSelectPrompt = async (prompt) => {
+    setIsWorkspaceLoading(true);
+    setAppError('');
+    try {
+      const hydratedPrompt = await api.getPrompt(prompt.id);
+      setSelectedPrompt(hydratedPrompt);
+      setPrompts((current) =>
+        current.map((item) => (item.id === hydratedPrompt.id ? hydratedPrompt : item)),
+      );
+      setActiveTab('editor');
+      setDiffSelection([]);
+    } catch (error) {
+      setAppError(error.message || 'Could not open that prompt workspace.');
+    } finally {
+      setIsWorkspaceLoading(false);
+    }
+  };
+
   const refreshPrompt = async () => {
     if (!selectedPrompt) return;
-    const [updatedPrompt, updatedAnalytics] = await Promise.all([
-      api.getPrompt(selectedPrompt.id),
-      api.getAnalytics(selectedPrompt.id),
-    ]);
-    setSelectedPrompt(updatedPrompt);
-    setAnalytics(updatedAnalytics);
+    setIsRefreshingPrompt(true);
+    setAppError('');
+    try {
+      const [updatedPrompt, updatedAnalytics] = await Promise.all([
+        api.getPrompt(selectedPrompt.id),
+        api.getAnalytics(selectedPrompt.id),
+      ]);
+      setSelectedPrompt(updatedPrompt);
+      setPrompts((current) =>
+        current.map((prompt) => (prompt.id === updatedPrompt.id ? updatedPrompt : prompt)),
+      );
+      setAnalytics(updatedAnalytics);
+    } catch (error) {
+      setAppError(error.message || 'Could not refresh the current prompt workspace.');
+    } finally {
+      setIsRefreshingPrompt(false);
+    }
   };
 
   const handleEditOpen = () => {
@@ -52,20 +108,55 @@ function App() {
   const handleEditSubmit = async (event) => {
     event.preventDefault();
     if (!editPromptData.name) return;
-    const updated = await api.updatePrompt(selectedPrompt.id, editPromptData);
-    setSelectedPrompt(updated);
-    setIsEditModalOpen(false);
-    setSidebarRefresh((value) => value + 1);
-    const updatedAnalytics = await api.getAnalytics(updated.id);
-    setAnalytics(updatedAnalytics);
+    setIsSavingPromptMeta(true);
+    setAppError('');
+    try {
+      const updated = await api.updatePrompt(selectedPrompt.id, editPromptData);
+      setSelectedPrompt(updated);
+      setPrompts((current) =>
+        current.map((prompt) => (prompt.id === updated.id ? updated : prompt)),
+      );
+      setIsEditModalOpen(false);
+      const updatedAnalytics = await api.getAnalytics(updated.id);
+      setAnalytics(updatedAnalytics);
+    } catch (error) {
+      setAppError(error.message || 'Could not save prompt details.');
+    } finally {
+      setIsSavingPromptMeta(false);
+    }
   };
 
   const handleDeletePrompt = async () => {
     if (!window.confirm(`Delete "${selectedPrompt.name}"? This cannot be undone.`)) return;
-    await api.deletePrompt(selectedPrompt.id);
-    setSelectedPrompt(null);
-    setAnalytics(null);
-    setSidebarRefresh((value) => value + 1);
+    setIsDeletingPrompt(true);
+    setAppError('');
+    try {
+      await api.deletePrompt(selectedPrompt.id);
+      setPrompts((current) => current.filter((prompt) => prompt.id !== selectedPrompt.id));
+      setSelectedPrompt(null);
+      setAnalytics(null);
+    } catch (error) {
+      setAppError(error.message || 'Could not delete the prompt workspace.');
+    } finally {
+      setIsDeletingPrompt(false);
+    }
+  };
+
+  const handlePromptCreated = (createdPrompt) => {
+    setPrompts((current) => [createdPrompt, ...current]);
+    setIsCreateModalOpen(false);
+    handleSelectPrompt(createdPrompt);
+  };
+
+  const handleOpenWorkspace = async () => {
+    if (prompts.length > 0) {
+      const latestPrompt = prompts[0];
+      const hydratedPrompt = await api.getPrompt(latestPrompt.id);
+      handleSelectPrompt(hydratedPrompt);
+      return;
+    }
+
+    setIsCreateModalOpen(true);
   };
 
   const handleSelectForDiff = (id) => {
@@ -91,16 +182,22 @@ function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-deep)] text-[var(--text-main)] selection:bg-[rgba(255,140,50,0.2)]">
       <Sidebar
-        onSelectPrompt={(prompt) => {
-          setSelectedPrompt(prompt);
-          setActiveTab('editor');
-          setDiffSelection([]);
-        }}
+        prompts={prompts}
+        isLoading={isPromptsLoading}
+        onSelectPrompt={handleSelectPrompt}
+        onPromptCreated={handlePromptCreated}
         selectedPromptId={selectedPrompt?.id}
-        refreshTrigger={sidebarRefresh}
+        isCreateModalOpen={isCreateModalOpen}
+        onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        onCloseCreateModal={() => setIsCreateModalOpen(false)}
       />
 
       <main className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-deep)]">
+        {appError && (
+          <div className="border-b border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-6 py-3 mono-ui text-[10px] leading-6 text-[#ffb3ad]">
+            {appError}
+          </div>
+        )}
         {selectedPrompt ? (
           <>
             <header className="border-b border-[var(--line)] bg-[rgba(15,16,20,0.96)] backdrop-blur">
@@ -129,24 +226,27 @@ function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={refreshPrompt}
-                      className="outline-button mono-ui px-3 py-2 text-[10px] uppercase tracking-[0.12em]"
+                      disabled={isRefreshingPrompt || isWorkspaceLoading}
+                      className="outline-button mono-ui px-3 py-2 text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="flex items-center gap-2">
                         <RotateCcw className="h-4 w-4" />
-                        Refresh
+                        {isRefreshingPrompt ? 'Refreshing...' : 'Refresh'}
                       </span>
                     </button>
                     <button
                       onClick={handleEditOpen}
-                      className="outline-button p-2 text-[var(--text-muted)]"
+                      disabled={isSavingPromptMeta || isDeletingPrompt}
+                      className="outline-button p-2 text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Settings2 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={handleDeletePrompt}
-                      className="border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-3 py-2 mono-ui text-[10px] uppercase tracking-[0.12em] text-[#ffb3ad] transition-colors hover:bg-[rgba(255,111,97,0.14)]"
+                      disabled={isDeletingPrompt}
+                      className="border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-3 py-2 mono-ui text-[10px] uppercase tracking-[0.12em] text-[#ffb3ad] transition-colors hover:bg-[rgba(255,111,97,0.14)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Delete
+                      {isDeletingPrompt ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -213,12 +313,19 @@ function App() {
                 <TestsTab
                   prompt={selectedPrompt}
                   analytics={analytics}
+                  onPromptChanged={refreshPrompt}
                 />
               )}
             </div>
           </>
         ) : (
-          <LandingPage onGetStarted={() => setSidebarRefresh((value) => value + 1)} />
+          <LandingPage
+            prompts={prompts}
+            isLoading={isPromptsLoading}
+            onOpenWorkspace={handleOpenWorkspace}
+            onCreatePrompt={() => setIsCreateModalOpen(true)}
+            onSelectPrompt={handleSelectPrompt}
+          />
         )}
       </main>
 
@@ -263,16 +370,18 @@ function App() {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={isSavingPromptMeta}
                   onClick={() => setIsEditModalOpen(false)}
-                  className="outline-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em]"
+                  className="outline-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="solid-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em]"
+                  disabled={isSavingPromptMeta}
+                  className="solid-button px-4 py-2 mono-ui text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Save
+                  {isSavingPromptMeta ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>

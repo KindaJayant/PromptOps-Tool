@@ -345,6 +345,48 @@ async def run_tests(version_id: int, db: Session = Depends(get_db)):
 def list_test_runs(version_id: int, db: Session = Depends(get_db)):
     return db.query(models.TestRun).filter(models.TestRun.prompt_version_id == version_id).all()
 
+
+@app.get("/prompts/{prompt_id}/test-case-matrix", response_model=schemas.TestCaseMatrixResponse)
+def get_test_case_matrix(prompt_id: int, db: Session = Depends(get_db)):
+    db_prompt = db.query(models.Prompt).filter(models.Prompt.id == prompt_id).first()
+    if not db_prompt:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    versions = sorted(db_prompt.versions, key=lambda version: version.version_number)
+    test_cases = sorted(db_prompt.test_cases, key=lambda test_case: test_case.id)
+
+    rows = []
+    for test_case in test_cases:
+        version_results = []
+        for version in versions:
+            matching_runs = [
+                run for run in version.test_runs
+                if run.test_case_id == test_case.id
+            ]
+            if not matching_runs:
+                continue
+
+            latest_run = max(matching_runs, key=lambda run: run.ran_at)
+            version_results.append({
+                "version_id": version.id,
+                "version_number": version.version_number,
+                "score": latest_run.score,
+                "passed": latest_run.passed,
+                "ran_at": latest_run.ran_at,
+            })
+
+        rows.append({
+            "test_case_id": test_case.id,
+            "input": test_case.input,
+            "expected_output": test_case.expected_output,
+            "versions": version_results,
+        })
+
+    return {
+        "prompt_id": db_prompt.id,
+        "rows": rows,
+    }
+
 # Analytics & Export
 @app.get("/prompts/{prompt_id}/analytics", response_model=schemas.PromptAnalytics)
 def get_analytics(prompt_id: int, db: Session = Depends(get_db)):

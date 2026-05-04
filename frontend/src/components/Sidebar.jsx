@@ -3,25 +3,48 @@ import { FileText, Plus, Search } from 'lucide-react';
 
 import { api } from '../api';
 
-const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
-  const [prompts, setPrompts] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+const Sidebar = ({
+  prompts,
+  isLoading,
+  onSelectPrompt,
+  onPromptCreated,
+  selectedPromptId,
+  isCreateModalOpen,
+  onOpenCreateModal,
+  onCloseCreateModal,
+}) => {
   const [newPrompt, setNewPrompt] = useState({ name: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
-    api.listPrompts().then(setPrompts);
-  }, [refreshTrigger]);
+    if (!isCreateModalOpen) {
+      setCreateError('');
+      setIsCreating(false);
+      setNewPrompt({ name: '', description: '' });
+    }
+  }, [isCreateModalOpen]);
 
   const handleCreatePrompt = async (event) => {
     event.preventDefault();
-    if (!newPrompt.name.trim()) return;
+    const name = newPrompt.name.trim();
+    if (!name) return;
 
-    const created = await api.createPrompt(newPrompt);
-    setPrompts((current) => [...current, created]);
-    setNewPrompt({ name: '', description: '' });
-    setIsModalOpen(false);
-    onSelectPrompt(created);
+    setCreateError('');
+    setIsCreating(true);
+
+    try {
+      const created = await api.createPrompt({
+        name,
+        description: newPrompt.description.trim(),
+      });
+      onPromptCreated(created);
+    } catch (error) {
+      setCreateError(error.message || 'Could not create the prompt workspace.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const filteredPrompts = prompts.filter((prompt) =>
@@ -37,7 +60,7 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
 
       <div className="px-3 py-3">
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={onOpenCreateModal}
           className="solid-button flex w-full items-center justify-center gap-2 px-4 py-3 font-[var(--mono)] text-[10px] uppercase tracking-[0.14em]"
         >
           <Plus className="h-4 w-4" />
@@ -59,7 +82,11 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
       <div className="flex-1 overflow-y-auto px-0 pb-4">
         <div className="label-micro px-4 py-3">Prompts</div>
 
-        {filteredPrompts.length === 0 ? (
+        {isLoading ? (
+          <div className="mx-3 border border-dashed border-[var(--line)] px-4 py-5 text-[10px] leading-6 text-[var(--text-muted)]">
+            Loading workspace...
+          </div>
+        ) : filteredPrompts.length === 0 ? (
           <div className="mx-3 border border-dashed border-[var(--line)] px-4 py-5 text-[10px] leading-6 text-[var(--text-muted)]">
             No prompts yet.
           </div>
@@ -101,7 +128,7 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
         )}
       </div>
 
-      {isModalOpen && (
+      {isCreateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/72 p-4">
           <div className="modal-shell w-full max-w-sm p-6">
             <div className="label-micro accent-label mb-3">Create prompt</div>
@@ -113,6 +140,11 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
             </p>
 
             <form onSubmit={handleCreatePrompt} className="mt-6 space-y-4">
+              {createError && (
+                <div className="border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-3 py-2.5 font-[var(--mono)] text-[10px] leading-6 text-[#ffb3ad]">
+                  {createError}
+                </div>
+              )}
               <div>
                 <label className="label-micro mb-2 block">Name</label>
                 <input
@@ -134,16 +166,18 @@ const Sidebar = ({ onSelectPrompt, selectedPromptId, refreshTrigger }) => {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="outline-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em]"
+                  disabled={isCreating}
+                  onClick={onCloseCreateModal}
+                  className="outline-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="solid-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em]"
+                  disabled={isCreating || !newPrompt.name.trim()}
+                  className="solid-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Create
+                  {isCreating ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>
