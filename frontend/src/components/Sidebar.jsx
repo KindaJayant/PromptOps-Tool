@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FileText, Plus, Search } from 'lucide-react';
 
 import { api } from '../api';
@@ -15,14 +15,36 @@ const Sidebar = ({
 }) => {
   const [newPrompt, setNewPrompt] = useState({ name: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (!isCreateModalOpen) {
+      setCreateError('');
+      setIsCreating(false);
+      setNewPrompt({ name: '', description: '' });
+    }
+  }, [isCreateModalOpen]);
 
   const handleCreatePrompt = async (event) => {
     event.preventDefault();
-    if (!newPrompt.name.trim()) return;
+    const name = newPrompt.name.trim();
+    if (!name) return;
 
-    const created = await api.createPrompt(newPrompt);
-    setNewPrompt({ name: '', description: '' });
-    onPromptCreated(created);
+    setCreateError('');
+    setIsCreating(true);
+
+    try {
+      const created = await api.createPrompt({
+        name,
+        description: newPrompt.description.trim(),
+      });
+      onPromptCreated(created);
+    } catch (error) {
+      setCreateError(error.message || 'Could not create the prompt workspace.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const filteredPrompts = prompts.filter((prompt) =>
@@ -118,6 +140,11 @@ const Sidebar = ({
             </p>
 
             <form onSubmit={handleCreatePrompt} className="mt-6 space-y-4">
+              {createError && (
+                <div className="border border-[rgba(255,111,97,0.24)] bg-[rgba(255,111,97,0.08)] px-3 py-2.5 font-[var(--mono)] text-[10px] leading-6 text-[#ffb3ad]">
+                  {createError}
+                </div>
+              )}
               <div>
                 <label className="label-micro mb-2 block">Name</label>
                 <input
@@ -139,16 +166,18 @@ const Sidebar = ({
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={isCreating}
                   onClick={onCloseCreateModal}
-                  className="outline-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em]"
+                  className="outline-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="solid-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em]"
+                  disabled={isCreating || !newPrompt.name.trim()}
+                  className="solid-button px-4 py-2 font-[var(--mono)] text-[10px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Create
+                  {isCreating ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>
